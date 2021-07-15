@@ -7,154 +7,24 @@
 
 #include "linearsystem.h"
 #include "body.h"
+#include "quadrature.h"
+#include "matrix.h"
 
 void Log(std::string message)
 {
 	std::cout<< "\n"<< message << "\n";
 }
 
-const std::vector<std::vector<double>> QUADRATURE_POINTS = { 
-	{0},
-	{-0.5773502691896257,0.5773502691896257},
-	{0,-0.7745966692414834,0.7745966692414834},
-	{0.6521451548625461,0.6521451548625461,0.3478548451374538,0.3478548451374538},
-};
-
-const std::vector<std::vector<double>> QUADRATURE_WEIGHTS = { 
-	{2},
-	{1,1},
-	{0.8888888888888888,0.5555555555555556,0.5555555555555556},
-	{-0.3399810435848563,0.3399810435848563,-0.8611363115940526,0.8611363115940526},
-};
-
-//Class to implement Gaussian Quadrature on an arbitrary function that takes and returns doubles
-class Quadrature
-{
-public:
-	//Gaussian Quadrature for one-dimensional integration
-	double IntegrateOneD(const int& points, std::function<double (double)> Func)
-	{
-		int index = points - 1;
-		double result = 0.0;
-		for (int i = 0; i < points; i++)
-		{
-			result += QUADRATURE_WEIGHTS[index][i] * Func(QUADRATURE_POINTS[index][i]);
-		}
-		return result;
-	}
-	//Gaussian Quadrature for two-dimensional integration
-	double IntegrateTwoD(const int& points, std::function<double (double,double)> Func)
-	{
-		int index = points - 1;
-		double result = 0.0;
-		for (int i = 0; i < points; i++)
-		{
-			for (int j = 0; j< points; j++)
-			{
-				result += QUADRATURE_WEIGHTS[index][i] * QUADRATURE_WEIGHTS[index][j] 
-					* Func(QUADRATURE_POINTS[index][i],QUADRATURE_POINTS[index][j]);
-			}
-		}
-		return result;
-	}
-	//Gaussian Quadrature for three-dimensional integration
-	double IntegrateThreeD(const int& points, std::function<double (double,double,double)> Func)
-	{
-		int index = points - 1;
-		double result = 0.0;
-		for (int i = 0; i < points; i++)
-		{
-			for (int j = 0; j < points; j++)
-			{
-				for (int k = 0; k < points; k++)
-				{
-					result += QUADRATURE_WEIGHTS[index][i] * QUADRATURE_WEIGHTS[index][j] * QUADRATURE_WEIGHTS[index][k]
-						* Func(QUADRATURE_POINTS[index][i], QUADRATURE_POINTS[index][j], QUADRATURE_POINTS[index][k]);
-				}
-			}
-		}
-		return result;
-	}
-};
-
-class Matrix
+//Base class to define all subsequent elements
+class Element
 {
 private:
-	std::vector<std::vector<double>> matrix;
-
-	int CountRows()
-	{
-		return matrix.size();
-	}
-
-	int CountCols()
-	{
-		return matrix[0].size();
-	}
 
 public:
-	Matrix()
-	{
-	}
-
-	Matrix(std::vector<std::vector<double>>& mat)
-	{
-		matrix = mat;
-	}
-	Matrix operator * (Matrix& B)
-	{
-		std::vector<std::vector<double>> temp;
-
-		for (int i = 0; i < CountRows(); i++)
-		{
-			std::vector<double> row;
-			for (int j = 0; j < B.CountCols(); j++)
-			{
-				double sum = 0;
-				for (int k = 0; k < CountCols(); k++)
-				{
-					sum += matrix[i][k] * B.matrix[k][j];
-				}
-				row.push_back(sum);
-			}
-			temp.push_back(row);
-		}
-		Matrix ret(temp);
-		return ret;
-	}
-
-	void Transpose()
-	{
-		std::vector<std::vector<double>> temp;
-		temp.resize(CountCols());
-
-		for (int i = 0; i < CountRows(); i++)
-		{
-			for (int j = 0; j < CountCols(); j++)
-			{
-				temp[j].push_back(matrix[i][j]);
-			}
-		}
-		matrix = temp;
-	}
-
-	void PrintMatrix()
-	{
-		std::cout << "\n";
-		for (int i = 0; i < matrix.size(); i++)
-		{
-			for (int j = 0; j < matrix[0].size(); j++)
-			{
-				std::cout << matrix[i][j] << " ";
-			}
-			std::cout << "\n";
-		}
-	}
 
 };
 
-
-class TetrahedralElement 
+class TetrahedralElement : public Element
 {
 private:
 	std::vector<std::vector<double>> nodes; //Array storing node coordinates as X Y Z
@@ -183,7 +53,7 @@ private:
 		for (int i = 0; i < nodes[0].size(); i++) //Rows of jacobian matrix 
 		{
 			//Update b vector with chosen node shape derivatives
-			b.push_back(shape_derivatives[chosen_node-1][i]);
+			b.push_back(shape_derivatives[chosen_node][i]);
 
 			for (int j = 0; j < nodes[0].size(); j++) //Columns of jacobian matrix
 			{
@@ -192,13 +62,13 @@ private:
 				{
 					sum += nodes[m][i]*shape_derivatives[m][j];
 				}
-				mat[i][j] = sum;
+				mat[i].push_back(sum);
 			}
 		}
 		LinearSystem temp_system(mat, b);
 		//Update globe_shape_derivatives with solution jacobian equation
 		//Can create B matrix after getting global shape derivatives
-		temp_system.Solve(global_shape_derivatives[chosen_node-1]);
+		temp_system.Solve(global_shape_derivatives[chosen_node]); //Update global shape derivates
 	}
 
 	//Constructs 6x12 elemental B matrix
@@ -206,7 +76,8 @@ private:
 	Matrix ConstructBMatrix()
 	{
 		std::vector<std::vector<double>> Mat;
-		Mat.resize(6);
+
+		Mat.resize(6); //Set rows of Mat to 6
 		for (int m = 0; m < nodes.size(); m++)
 		{
 			for (int i = 0; i < 6; i++) //6 rows
@@ -229,8 +100,9 @@ private:
 		return constructed_matrix;
 	}
 
-	double Jacobian_Det()
+	double Jacobian_Det() //Calculate the Jacobian determinant
 	{
+		//Not necessary but makes the determinant calculation much easier to read
 		double x[4] = {};
 		double y[4] = {};
 		double z[4] = {};
@@ -244,11 +116,23 @@ private:
 		}
 
 		return  ((x[1] - x[0]) * (((y[2] - y[0]) * (z[3] - z[0])) - ((y[3] - y[0]) * (z[2] - z[0]))))
-			- ((y[1] - y[0]) * (((x[2] - x[0]) * (z[3] - z[0])) - ((x[3] - x[0]) * (z[1] - z[0]))))
-			+ ((z[1] - z[0]) * (((x[2] - x[0]) * (y[3] - y[0])) - ((x[3] - x[0]) * (y[2] - y[0]))));
+				- ((y[1] - y[0]) * (((x[2] - x[0]) * (z[3] - z[0])) - ((x[3] - x[0]) * (z[1] - z[0]))))
+				+ ((z[1] - z[0]) * (((x[2] - x[0]) * (y[3] - y[0])) - ((x[3] - x[0]) * (y[2] - y[0]))));
+	}
+
+	void GetGlobalShapeDerivatives(double zeta, double eta, double mu)
+	{
+		for (int m = 0; m < nodes.size(); m++)
+		{
+			Jacobian(0,0,0,m); //zeta, eta, and mu need to be set to specific values for more complex elements
+		}
 	}
 
 public:
+	TetrahedralElement() //Default constructor
+	{
+
+	}
 	TetrahedralElement(std::vector<std::vector<double>>& body_nodes, int element[4])
 	{
 		for (int i = 0; i < body_nodes.size(); i++)
@@ -258,15 +142,97 @@ public:
 		}
 
 		jacobian_det = Jacobian_Det();
+		//Need to call Jacobian to find global shape derivatives before running ConstructBMatrix()
+		GetGlobalShapeDerivatives(0,0,0);
 		b_matrix = ConstructBMatrix();
+		b_matrix.PrintMatrix();
+		b_matrix.Transpose();
+		b_matrix.PrintMatrix();
 	}
 };
 
+//Class used to read and parse model data, parameters, and boundary conditions
 class Reader 
 {
+private:
+	std::string mesh_file_name;
+	std::string solver_input_name;
+	std::vector<std::string> instructions;
+
+	int node_numbers;
+
+	void ReadSolverInput()
+	{
+
+	}
+
+	void ReadMesh()
+	{
+		std::ifstream inFile(mesh_file_name);
+		std::string in = "";
+
+		int instruction_index = 0;
+		std::string instruction;
+		while (inFile >> in)
+		{
+			if (in[0] == '#')
+			{
+				instructions.push_back(in);
+				instruction = in;
+			}
+			else if (instruction == "#NODES")
+			{
+				double x, y, z;
+				x = std::stod(in);
+				inFile >> y;
+				inFile >> z;
+				body.AddNode(x, y, z);
+			}
+			else if (instruction == "#ELEMENTS")
+			{
+
+			}
+
+			instruction_index++;
+		}
+		inFile.close();
+	}
+
+	void ReadBoundaries()
+	{
+
+	}
+
+public:
+	Body body;
+
+	Reader(std::string mesh_name,std::string input_name)
+	{
+		mesh_file_name = mesh_name;
+		solver_input_name = input_name;
+	}
+
+	void Write()
+	{
+
+	}
 
 };
 
+//Class to solve problems in linear elasticity 
+class ElasticSolids
+{
+private:
+	std::vector<Element> elements;
+
+public:
+	ElasticSolids()//Default constructors
+	{
+
+	}
+};
+
+//Quick function to test Quadrature class
 double Funky(double x, double y, double z)
 {
 	return x * x * y * y * z * z;
@@ -302,4 +268,10 @@ int main()
 	C.Transpose();
 	C.PrintMatrix();
 
+	std::vector<std::vector<double>> nodey = {{0,0,0},{1,0,0},{0,1,0},{0,0,1}};
+	int elem[4] = {0,1,2,3};
+
+	TetrahedralElement elley(nodey, elem);
+
 }
+
