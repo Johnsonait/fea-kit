@@ -27,12 +27,9 @@ public:
 class TetrahedralElement : public Element
 {
 private:
-	std::vector<std::vector<double>> nodes; //Array storing node coordinates as X Y Z
 	std::vector<std::vector<double>> jacobian; //Storing value of 3x3 jacobian matrix mapping between local and global coordinates
 	double jacobian_det;
 	std::vector<std::vector<double>> shape_derivatives = { {-1,-1,-1},{1,0,0},{0,1,0},{0,0,1} }; //Storing shape derivates (dN1/dzeta etc) 4 nodes, 3 directions gives 12 values X Y Z to zeta eta mu
-	std::vector<std::vector<double>> global_shape_derivatives; //Store global shape derivatives for each node
-	Matrix b_matrix; //Storing B matrix of element, tetrahedral element has 6x12 B matrix
 
 	//Element shape functions in local coordinate system
 	//Simple for tets but added for potentential future uses
@@ -71,35 +68,6 @@ private:
 		temp_system.Solve(global_shape_derivatives[chosen_node]); //Update global shape derivates
 	}
 
-	//Constructs 6x12 elemental B matrix
-	//Requires global shape function derivatives
-	Matrix ConstructBMatrix()
-	{
-		std::vector<std::vector<double>> Mat;
-
-		Mat.resize(6); //Set rows of Mat to 6
-		for (int m = 0; m < nodes.size(); m++)
-		{
-			for (int i = 0; i < 6; i++) //6 rows
-			{
-				std::vector<std::vector<double>> sub_matrix = {
-					{global_shape_derivatives[m][0],0,0},
-					{0,global_shape_derivatives[m][1],0},
-					{0,0,global_shape_derivatives[m][2]},
-					{0,global_shape_derivatives[m][2],global_shape_derivatives[m][1]},
-					{global_shape_derivatives[m][2],0,global_shape_derivatives[m][0]},
-					{global_shape_derivatives[m][1],global_shape_derivatives[m][0],0}
-				};
-				for (int j = 0; j < 3; j++) //For col of sub-matrix
-				{
-					Mat[i].push_back(sub_matrix[i][j]); //Add rows to full B matrix
-				}
-			}
-		}
-		Matrix constructed_matrix(Mat);
-		return constructed_matrix;
-	}
-
 	double Jacobian_Det() //Calculate the Jacobian determinant
 	{
 		//Not necessary but makes the determinant calculation much easier to read
@@ -120,18 +88,14 @@ private:
 				+ ((z[1] - z[0]) * (((x[2] - x[0]) * (y[3] - y[0])) - ((x[3] - x[0]) * (y[2] - y[0]))));
 	}
 
-	void GetGlobalShapeDerivatives(double zeta, double eta, double mu)
-	{
-		for (int m = 0; m < nodes.size(); m++)
-		{
-			Jacobian(0,0,0,m); //zeta, eta, and mu need to be set to specific values for more complex elements
-		}
-	}
 
 public:
+	std::vector<std::vector<double>> global_shape_derivatives; //Store global shape derivatives for each node
+	std::vector<std::vector<double>> nodes; //Array storing node coordinates as X Y Z
+
 	TetrahedralElement() //Default constructor
 	{
-
+		std::cout << "Default constructor: TetrahedralElement()" << std::endl;
 	}
 	TetrahedralElement(std::vector<std::vector<double>>& body_nodes, int element[4])
 	{
@@ -144,10 +108,14 @@ public:
 		jacobian_det = Jacobian_Det();
 		//Need to call Jacobian to find global shape derivatives before running ConstructBMatrix()
 		GetGlobalShapeDerivatives(0,0,0);
-		b_matrix = ConstructBMatrix();
-		b_matrix.PrintMatrix();
-		b_matrix.Transpose();
-		b_matrix.PrintMatrix();
+	}
+
+	void GetGlobalShapeDerivatives(double zeta, double eta, double mu)
+	{
+		for (int m = 0; m < nodes.size(); m++)
+		{
+			Jacobian(0, 0, 0, m); //zeta, eta, and mu need to be set to specific values for more complex elements
+		}
 	}
 };
 
@@ -223,11 +191,74 @@ public:
 class ElasticSolids
 {
 private:
-	std::vector<Element> elements;
+	double E, poisson, lambda, G; //Lame parameters.
+
+	std::vector<std::vector<double>> global_k = {};
+
+	Matrix elastic_matrix;
+	Matrix b_matrix;
+
+	void Lame()
+	{
+		lambda = (E*poisson) / ((1+poisson)*(1-(2*poisson)));
+		G = E / (2 * (1 + poisson));
+	}
+
+	//Populates isotropic elasticity matrix with Lame parameters
+	void ConstructElasticMatrix()
+	{
+		std::vector<std::vector<double>> temp = {
+			{((2*G)+lambda),lambda,lambda,0,0,0},
+			{lambda,((2 * G) + lambda),lambda,0,0,0},
+			{lambda,lambda,((2 * G) + lambda),0,0,0},
+			{0,0,0,G,0,0},
+			{0,0,0,0,G,0},
+			{0,0,0,0,0,G} };
+		elastic_matrix = Matrix::Matrix(temp);
+	}
+	//Constructs 6x12 elemental B matrix
+	//Requires global shape function derivatives
+	void ConstructBMatrix(TetrahedralElement& el,Matrix& temp_b)
+	{
+		std::vector<std::vector<double>> nodes = el.nodes;
+		std::vector<std::vector<double>> global_shape_derivatives = el.global_shape_derivatives;
+
+		std::vector<std::vector<double>> Mat;
+		Mat.resize(6); //Set rows of Mat to 6
+
+		for (int m = 0; m < nodes.size(); m++)
+		{
+			for (int i = 0; i < 6; i++) //6 rows
+			{
+				std::vector<std::vector<double>> sub_matrix = {
+					{global_shape_derivatives[m][0],0,0},
+					{0,global_shape_derivatives[m][1],0},
+					{0,0,global_shape_derivatives[m][2]},
+					{0,global_shape_derivatives[m][2],global_shape_derivatives[m][1]},
+					{global_shape_derivatives[m][2],0,global_shape_derivatives[m][0]},
+					{global_shape_derivatives[m][1],global_shape_derivatives[m][0],0}
+				};
+				for (int j = 0; j < 3; j++) //For col of sub-matrix
+				{
+					Mat[i].push_back(sub_matrix[i][j]); //Add rows to full B matrix
+				}
+			}
+		}
+		temp_b = Matrix::Matrix(Mat);
+	}
 
 public:
 	ElasticSolids()//Default constructors
 	{
+		std::cout << "Default constructor: ElasticSolids()" << std::endl;
+	}
+
+	ElasticSolids(Reader& reader, double e, double pois)
+	{
+		E = e;
+		poisson = pois;
+		Lame();
+		ConstructElasticMatrix();
 
 	}
 };

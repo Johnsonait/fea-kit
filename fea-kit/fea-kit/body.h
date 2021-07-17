@@ -8,6 +8,7 @@ public:
 	//Array storing the coordinates of nodes, nodes[i] is a vector of 3 double coordinates X Y Z
 	//the global nodal number is uniquely determined by the index
 	std::vector<std::vector<double>> nodes;
+	std::vector<std::vector<int>> elements;
 
 	//Array storing the nodes associated with a number of traction boundaries. Each seperate boundary
 	//is tied to the index of the node-storing vector
@@ -23,7 +24,6 @@ public:
 
 	std::vector<std::vector<double>> displacement; //Store the displacement result for each node, []
 	std::vector<std::vector<double>> stress; //Store stress values (Voight) [Sxx Syy Szz Szy Szx Sxy]
-	std::vector<std::vector<double>> elastic_matrix; //Store the elasticity matrix for the body C
 	std::vector<double> temperature;//Store temperatures at nodes
 
 	double elastic_modulus;
