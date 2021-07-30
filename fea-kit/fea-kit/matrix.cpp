@@ -18,10 +18,8 @@ Matrix::Matrix() //Default constructor
 {
 }
 
-Matrix::Matrix(std::vector<std::vector<double>>& mat)
-{
-	matrix = mat;
-}
+Matrix::Matrix(std::vector<std::vector<double>>& mat) : matrix(mat) {}
+
 Matrix Matrix::operator * (Matrix& B)
 {
 	std::vector<std::vector<double>> temp;

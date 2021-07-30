@@ -154,7 +154,8 @@ private:
 				x = std::stod(in);
 				inFile >> y;
 				inFile >> z;
-				body.AddNode(x, y, z);
+				std::vector<double> temp{ x,y,z };
+				body.AddNode(temp);
 			}
 			else if (instruction == "#ELEMENTS")
 			{
@@ -174,11 +175,7 @@ private:
 public:
 	Body body;
 
-	Reader(std::string mesh_name,std::string input_name)
-	{
-		mesh_file_name = mesh_name;
-		solver_input_name = input_name;
-	}
+	Reader(std::string mesh_name, std::string input_name) : mesh_file_name(mesh_name), solver_input_name(input_name) {}
 
 	void Write()
 	{
@@ -303,6 +300,7 @@ int main()
 	int elem[4] = {0,1,2,3};
 
 	TetrahedralElement elley(nodey, elem);
+
 
 }
 
