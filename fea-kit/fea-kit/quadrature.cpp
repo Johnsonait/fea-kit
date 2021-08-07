@@ -4,7 +4,7 @@
 #include "quadrature.h"
 
 //Pre-calculated quadrature points 
-const std::vector<std::vector<double>> QUADRATURE_POINTS = {
+static const std::vector<std::vector<double>> QUADRATURE_POINTS = {
 	{0},
 	{-0.5773502691896257,0.5773502691896257},
 	{0,-0.7745966692414834,0.7745966692414834},
@@ -12,7 +12,7 @@ const std::vector<std::vector<double>> QUADRATURE_POINTS = {
 };
 
 //Pre-calculated quuadrature weights
-const std::vector<std::vector<double>> QUADRATURE_WEIGHTS = {
+static const std::vector<std::vector<double>> QUADRATURE_WEIGHTS = {
 	{2},
 	{1,1},
 	{0.8888888888888888,0.5555555555555556,0.5555555555555556},

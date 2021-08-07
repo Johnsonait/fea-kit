@@ -3,6 +3,20 @@
 
 #include "body.h"
 
+//Constructors
+Body::Body()
+{
+	nodes = {};
+	elements = {};
+	displacement = {};
+	strain = {};
+	stress = {};
+	temperature = {};
+	boundary_nodes = {};
+	boundary_types = {};
+	boundary_values = {};
+}
+
 //Accessors
 const std::vector<std::vector<double>>& Body::GetNodes() { return nodes; }
 const std::vector<std::vector<uint32_t>>& Body::GetElements() { return elements; }
@@ -32,3 +46,19 @@ void Body::AddBoundary(const std::vector<uint32_t>& b_n, const std::string& s, c
 	boundary_types.push_back(s);
 	boundary_values.push_back(b_v);
 }
+
+void Body::SetMaterialProp(const std::string& type, const double& val)
+{
+	if (type == "*CONDUCTIVITY")
+	{
+		conductivity = val;
+	}
+	else if (type == "*ELASTIC_MODULUS")
+	{
+		elastic_modulus = val;
+	}
+	else if (type == "*POISSON_RATIO")
+	{
+		poisson_ratio = val;
+	}
+}	

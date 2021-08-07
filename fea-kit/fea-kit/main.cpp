@@ -24,7 +24,7 @@ public:
 
 };
 
-class TetrahedralElement : public Element
+class TetrahedralElement : private Element
 {
 private:
 	std::vector<std::vector<double>> jacobian; //Storing value of 3x3 jacobian matrix mapping between local and global coordinates
@@ -123,69 +123,177 @@ public:
 class Reader 
 {
 private:
-	std::string mesh_file_name;
-	std::string solver_input_name;
-	std::vector<std::string> instructions;
+	std::string instruction;
 
-	int node_numbers;
-
-	void ReadSolverInput()
+	std:: string& CheckComma(std::string& str)
 	{
-
-	}
-
-	void ReadMesh()
-	{
-		std::ifstream inFile(mesh_file_name);
-		std::string in = "";
-
-		int instruction_index = 0;
-		std::string instruction;
-		while (inFile >> in)
+		if (str.back() == ',')
 		{
-			if (in[0] == '#')
-			{
-				instructions.push_back(in);
-				instruction = in;
-			}
-			else if (instruction == "#NODES")
-			{
-				double x, y, z;
-				x = std::stod(in);
-				inFile >> y;
-				inFile >> z;
-				std::vector<double> temp{ x,y,z };
-				body.AddNode(temp);
-			}
-			else if (instruction == "#ELEMENTS")
-			{
-
-			}
-
-			instruction_index++;
+			str.pop_back();
 		}
-		inFile.close();
+		return str;
 	}
-
-	void ReadBoundaries()
+	void  ParseInstruction(std::fstream& f, const std::string& instruction, Body& body)
 	{
+		if (instruction == "*NODE")
+		{
+			std::string input = "";
+			while (f >> input && input != "*")
+			{
+				std::string id = input, x, y, z;
+				f >> x;
+				f >> y;
+				f >> z;
+				CheckComma(x);
+				CheckComma(y);
+				CheckComma(z);
+				std::vector<double> n = {std::stod(x),std::stod(y),std::stod(z)};
+				body.AddNode(n);
+				input = "";
+			}
+			return;
+		}
+		else if (instruction == "*ELEMENT_SOLID")
+		{
+			std::string input = "";
+			while (f >> input && input != "*")
+			{
+				if (input.front() == '$')
+				{
+					continue;
+				}
+				std::string id1 = input, id2, n1, n2, n3, n4, n5, n6, n7, n8;
+				f >> id2 >> n1 >> n2 >> n3 >> n4 >> n5 >> n6 >> n7 >> n8;
+				if (n5 == n4)
+				{
+					std::vector<uint32_t> el = {
+						static_cast<uint32_t>(std::stoul(CheckComma(n1))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n2))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n3))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n4)))
+					};
+					body.AddElement(el);
+				}
+				else
+				{
+					std::vector<uint32_t> el = {
+						static_cast<uint32_t>(std::stoul(CheckComma(n1))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n2))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n3))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n4))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n5))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n6))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n7))),
+						static_cast<uint32_t>(std::stoul(CheckComma(n8)))
+					};
+					body.AddElement(el);
+				}
+			}
+			return;
+		}
+		else if (instruction == "*SET_LINEAR_MATERIAL")
+		{
+			std::string sub_instruction = "";
+			std::string val = "";
 
+			while (f >> sub_instruction && sub_instruction != "*")
+			{
+				f >> val;
+				body.SetMaterialProp(sub_instruction,std::stod(CheckComma(val)));
+			}
+			return;
+		}
+		else if (instruction == "*DISPLACEMENT" || instruction == "*TRACTION")
+		{
+			AddVectorBound(instruction, f, body);
+
+			return;
+		}
+		else if (instruction == "*PRESSURE" || instruction == "*TEMPERATURE")
+		{
+			AddScalarBound(instruction, f, body);
+			return;
+		}
+		else if (instruction == "*END")
+		{
+			f.close();
+			return;
+		}
 	}
 
+	void AddScalarBound(const std::string& instruction, std::fstream& f, Body& body)
+	{
+		std::string input = "";
+		std::string val;
+
+		f >> val;
+		std::vector<double> scal = {
+			std::stod(CheckComma(val))
+		};
+
+		std::vector<uint32_t> node_list = {};
+
+		while (f >> input && input != "*")
+		{
+			node_list.push_back(static_cast<uint32_t>(std::stoul(CheckComma(input))));
+		}
+
+		body.AddBoundary(node_list, "*DISPLACEMENT", scal);
+
+		return;
+	}
+
+	void AddVectorBound(const std::string& inst, std::fstream& f, Body& body)
+	{
+		std::string input = "";
+		std::string u, v, w;
+
+		f >> u >> v >> w;
+		std::vector<double> vec = {
+			std::stod(CheckComma(u)),
+			std::stod(CheckComma(v)),
+			std::stod(CheckComma(w))
+		};
+
+		std::vector<uint32_t> node_list = {};
+
+		while (f >> input && input != "*")
+		{
+			node_list.push_back(static_cast<uint32_t>(std::stoul(CheckComma(input))));
+		}
+
+		body.AddBoundary(node_list, "*DISPLACEMENT", vec);
+
+		return;
+	}
+	
 public:
-	Body body;
-
-	Reader(std::string mesh_name, std::string input_name) : mesh_file_name(mesh_name), solver_input_name(input_name) {}
-
-	void Write()
+	Reader() : instruction("")
+	{}
+	Reader(const std::string& file_name, Body& body) : instruction("")
 	{
+		std::fstream file;
+		file.open(file_name);
+		while (file.is_open())
+		{
+			std::getline(file, instruction);
+			ParseInstruction(file, instruction,body);
+		}
 
 	}
 
 };
 
+class Model
+{
+private:
+
+public:
+
+};
+
 //Class to solve problems in linear elasticity 
-class ElasticSolids
+class ElasticSolids : public Model
 {
 private:
 	double E, poisson, lambda, G; //Lame parameters.
