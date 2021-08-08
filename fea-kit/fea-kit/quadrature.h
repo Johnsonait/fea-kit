@@ -5,10 +5,11 @@
 class Quadrature
 {
 private:
-	static const std::vector<std::vector<double>> QUADRATURE_POINTS;
-	static const std::vector<std::vector<double>> QUADRATURE_WEIGHTS;
 
 public:
+	Quadrature();
+
+
 	//Gaussian Quadrature for one-dimensional integration
 	double IntegrateOneD(const int& points, std::function<double(double)> Func);
 	//Gaussian Quadrature for two-dimensional integration
