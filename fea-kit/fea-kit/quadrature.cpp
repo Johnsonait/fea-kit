@@ -21,7 +21,7 @@ static const std::vector<std::vector<double>> QUADRATURE_WEIGHTS = {
 Quadrature::Quadrature() {}
 
 //Gaussian Quadrature for one-dimensional integration
-double Quadrature::IntegrateOneD(const int& points, std::function<double(double)> Func)
+double Quadrature::Integrate(const int& points, std::function<double(double)> Func)
 {
 	int index = points - 1;
 	double result = 0.0;
@@ -32,7 +32,7 @@ double Quadrature::IntegrateOneD(const int& points, std::function<double(double)
 	return result;
 }
 //Gaussian Quadrature for two-dimensional integration
-double Quadrature::IntegrateTwoD(const int& points, std::function<double(double, double)> Func)
+double Quadrature::Integrate(const int& points, std::function<double(double, double)> Func)
 {
 	int index = points - 1;
 	double result = 0.0;
@@ -47,7 +47,7 @@ double Quadrature::IntegrateTwoD(const int& points, std::function<double(double,
 	return result;
 }
 //Gaussian Quadrature for three-dimensional integration
-double Quadrature::IntegrateThreeD(const int& points, std::function<double(double, double, double)> Func)
+double Quadrature::Integrate(const int& points, std::function<double(double, double, double)> Func)
 {
 	int index = points - 1;
 	double result = 0.0;

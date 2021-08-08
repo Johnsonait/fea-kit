@@ -11,9 +11,9 @@ public:
 
 
 	//Gaussian Quadrature for one-dimensional integration
-	double IntegrateOneD(const int& points, std::function<double(double)> Func);
+	double Integrate(const int& points, std::function<double(double)> Func);
 	//Gaussian Quadrature for two-dimensional integration
-	double IntegrateTwoD(const int& points, std::function<double(double, double)> Func);
+	double Integrate(const int& points, std::function<double(double, double)> Func);
 	//Gaussian Quadrature for three-dimensional integration
-	double IntegrateThreeD(const int& points, std::function<double(double, double, double)> Func);
+	double Integrate(const int& points, std::function<double(double, double, double)> Func);
 };

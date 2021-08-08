@@ -1,5 +1,7 @@
 #include "element.h"
 
+Element::Element() = default;
+
 
 double Element::ShapeFunction(double, double, double, uint32_t)
 {

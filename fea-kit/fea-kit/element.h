@@ -5,6 +5,8 @@
 
 #include "linearsystem.h"
 
+#include "tetrahedral_element.h"
+
 class Element
 {
 private:
@@ -17,6 +19,8 @@ protected:
 	std::vector<std::vector<double>> nodes; //Array storing node coordinates as X Y Z
 
 public:
+
+	Element();
 
 	virtual double ShapeFunction(double, double, double, uint32_t);
 	virtual const std::vector<std::vector<double>>& GetGlobalShapeDerivatives(double, double, double);
