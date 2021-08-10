@@ -11,6 +11,9 @@
 #include "matrix.h"
 #include "reader.h"
 #include "element.h"
+#include "tetrahedral_element.h"
+#include "program.h"
+#include "model.h"
 
 void Log(std::string message)
 {
@@ -18,13 +21,6 @@ void Log(std::string message)
 }
 
 
-class Model
-{
-private:
-
-public:
-
-};
 
 //Class to solve problems in linear elasticity 
 class ElasticSolids : public Model

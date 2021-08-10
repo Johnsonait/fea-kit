@@ -1,10 +1,26 @@
 #include "tetrahedral_element.h"
 
 
+static const std::vector<std::vector<double>> shape_derivatives = { {-1,-1,-1},{1,0,0},{0,1,0},{0,0,1} }; //Storing shape derivates (dN1/dzeta etc) 4 nodes, 3 directions gives 12 values X Y Z to zeta eta mu
 
+//Constructors
+TetrahedralElement::TetrahedralElement() = default;
 
+TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>&body_nodes, int element[4])
+{
+	for (int i = 0; i < body_nodes.size(); i++)
+	{
+		nodes.push_back(body_nodes[element[i]]);
+		global_shape_derivatives.push_back({});
+	}
 
-double TetrahedralElement::ShapeFunction(double zeta, double eta, double mu,uint32_t n)
+	jacobian_det = JacobianDet();
+	//Need to call Jacobian to find global shape derivatives before running ConstructBMatrix()
+	GetGlobalShapeDerivatives(0, 0, 0);
+}
+
+//Useful
+double TetrahedralElement::ShapeFunction(double zeta, double eta, double mu, uint32_t n)
 {
 	switch (n)
 	{
@@ -23,7 +39,7 @@ double TetrahedralElement::ShapeFunction(double zeta, double eta, double mu,uint
 
 //Function that uses jacobian to find global derivatives of shape function 
 //for constructing B matrix
-void TetrahedralElement::Jacobian(double zeta, double eta, double mu, int chosen_node)
+void TetrahedralElement::Jacobian(double zeta, double eta, double mu, int m)
 {
 	std::vector<std::vector<double>> mat = { {},{},{} }; //Matrix for jacobian system solution
 	std::vector<double> b = {};//Vector "solution" for jacobian system 
@@ -33,7 +49,7 @@ void TetrahedralElement::Jacobian(double zeta, double eta, double mu, int chosen
 	for (int i = 0; i < nodes[0].size(); i++) //Rows of jacobian matrix 
 	{
 		//Update b vector with chosen node shape derivatives
-		b.push_back(shape_derivatives[chosen_node][i]);
+		b.push_back(shape_derivatives[m][i]);
 
 		for (int j = 0; j < nodes[0].size(); j++) //Columns of jacobian matrix
 		{
@@ -48,10 +64,10 @@ void TetrahedralElement::Jacobian(double zeta, double eta, double mu, int chosen
 	LinearSystem temp_system(mat, b);
 	//Update globe_shape_derivatives with solution jacobian equation
 	//Can create B matrix after getting global shape derivatives
-	temp_system.Solve(global_shape_derivatives[chosen_node]); //Update global shape derivates
+	temp_system.Solve(global_shape_derivatives[m]); //Update global shape derivates
 }
 
-double TetrahedralElement::Jacobian_Det() //Calculate the Jacobian determinant
+double TetrahedralElement::JacobianDet() //Calculate the Jacobian determinant
 {
 	//Not necessary but makes the determinant calculation much easier to read
 	double x[4] = {};
@@ -71,22 +87,7 @@ double TetrahedralElement::Jacobian_Det() //Calculate the Jacobian determinant
 		+ ((z[1] - z[0]) * (((x[2] - x[0]) * (y[3] - y[0])) - ((x[3] - x[0]) * (y[2] - y[0]))));
 }
 
-
-TetrahedralElement::TetrahedralElement() = default;
-
-TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>& body_nodes, int element[4])
-{
-	for (int i = 0; i < body_nodes.size(); i++)
-	{
-		nodes.push_back(body_nodes[element[i]]);
-		global_shape_derivatives.push_back({});
-	}
-
-	jacobian_det = Jacobian_Det();
-	//Need to call Jacobian to find global shape derivatives before running ConstructBMatrix()
-	GetGlobalShapeDerivatives(0, 0, 0);
-}
-
+//Accessors
 const std::vector<std::vector<double>>& TetrahedralElement::GetGlobalShapeDerivatives(double zeta, double eta, double mu)
 {
 	for (int m = 0; m < nodes.size(); m++)
@@ -99,4 +100,11 @@ const std::vector<std::vector<double>>& TetrahedralElement::GetGlobalShapeDeriva
 const std::vector<std::vector<double>>& TetrahedralElement::GetNodes()
 {
 	return nodes;
+}
+
+
+//Mutators
+void TetrahedralElement::AddNode(const std::vector<double>& n)
+{
+	nodes.push_back(n);
 }
