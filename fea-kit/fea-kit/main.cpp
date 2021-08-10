@@ -56,7 +56,8 @@ private:
 	void ConstructBMatrix(TetrahedralElement& el,Matrix& temp_b)
 	{
 		std::vector<std::vector<double>> nodes = el.GetNodes();
-		std::vector<std::vector<double>> global_shape_derivatives = el.GetGlobalShapeDerivatives(0,0,0);
+		el.CalcGlobalShapeDerivatives(0,0,0,0);
+		std::vector<std::vector<double>> global_shape_derivatives = el.GetGlobalShapeDerivatives();
 
 		std::vector<std::vector<double>> Mat;
 		Mat.resize(6); //Set rows of Mat to 6

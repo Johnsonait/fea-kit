@@ -20,14 +20,14 @@ double Element::JacobianDet()
 	return 0;
 }
 
-double Element::ShapeFunctionDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m)
+double Element::ShapeFunctionDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m, const uint32_t& direction)
 {
 	return 0;
 }
 
-void CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m)
+void Element::CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m)
 {
-
+	return;
 }
 
 //Accessors

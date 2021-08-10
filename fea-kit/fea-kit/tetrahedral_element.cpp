@@ -1,10 +1,12 @@
 #include "tetrahedral_element.h"
 
 
-static const std::vector<std::vector<double>> shape_derivatives = { {-1,-1,-1},{1,0,0},{0,1,0},{0,0,1} }; //Storing shape derivates (dN1/dzeta etc) 4 nodes, 3 directions gives 12 values X Y Z to zeta eta mu
-
 //Constructors
-TetrahedralElement::TetrahedralElement() = default;
+TetrahedralElement::TetrahedralElement()
+{
+	jacobian = {};
+	jacobian_det = 0;
+}
 
 TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>&body_nodes, int element[4])
 {
@@ -16,13 +18,16 @@ TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>&body_nod
 
 	jacobian_det = JacobianDet();
 	//Need to call Jacobian to find global shape derivatives before running ConstructBMatrix()
-	GetGlobalShapeDerivatives(0, 0, 0);
+	for  (uint32_t m = 0; m < 3; ++m)
+	{
+		CalcGlobalShapeDerivatives(0, 0, 0, m);
+	}
 }
 
 //Useful
-double TetrahedralElement::ShapeFunction(double zeta, double eta, double mu, uint32_t n)
+double TetrahedralElement::ShapeFunction(const double& zeta,const double& eta,const double& mu,const uint32_t& m)
 {
-	switch (n)
+	switch (m)
 	{
 	case 1:
 		return 1 - zeta - eta - mu;
@@ -37,9 +42,68 @@ double TetrahedralElement::ShapeFunction(double zeta, double eta, double mu, uin
 	}
 }
 
+double TetrahedralElement::ShapeFunctionDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m, const uint32_t& direction)
+{
+	//m refers to one of the 4 possible nodes, 1,2,3,4
+	//Direction refers to the 3 local coordinates of zeta, eta,mu
+	switch (m)
+	{
+	case 1:
+		switch (direction)
+		{
+		case 1:
+			return -1;
+		case 2: 
+			return -1;
+		case 3:
+			return -1;
+		default:
+			break;
+		}
+	case 2:
+		switch (direction)
+		{
+		case 1:
+			return 1;
+		case 2:
+			return 0;
+		case 3:
+			return 0;
+		default:
+			break;
+		}
+	case 3:
+		switch (direction)
+		{
+		case 1:
+			return 0;
+		case 2:
+			return 1;
+		case 3:
+			return 0;
+		default:
+			break;
+		}
+	case 4:
+		switch (direction)
+		{
+		case 1:
+			return 0;
+		case 2:
+			return 0;
+		case 3:
+			return 1;
+		default:
+			break;
+		}
+	default:
+		break;
+	}
+}
+
 //Function that uses jacobian to find global derivatives of shape function 
 //for constructing B matrix
-void TetrahedralElement::Jacobian(double zeta, double eta, double mu, int m)
+void TetrahedralElement::CalcGlobalShapeDerivatives(const double& zeta,const double& eta,const double& mu, const uint32_t& m)
 {
 	std::vector<std::vector<double>> mat = { {},{},{} }; //Matrix for jacobian system solution
 	std::vector<double> b = {};//Vector "solution" for jacobian system 
@@ -85,26 +149,4 @@ double TetrahedralElement::JacobianDet() //Calculate the Jacobian determinant
 	return  ((x[1] - x[0]) * (((y[2] - y[0]) * (z[3] - z[0])) - ((y[3] - y[0]) * (z[2] - z[0]))))
 		- ((y[1] - y[0]) * (((x[2] - x[0]) * (z[3] - z[0])) - ((x[3] - x[0]) * (z[1] - z[0]))))
 		+ ((z[1] - z[0]) * (((x[2] - x[0]) * (y[3] - y[0])) - ((x[3] - x[0]) * (y[2] - y[0]))));
-}
-
-//Accessors
-const std::vector<std::vector<double>>& TetrahedralElement::GetGlobalShapeDerivatives(double zeta, double eta, double mu)
-{
-	for (int m = 0; m < nodes.size(); m++)
-	{
-		Jacobian(0, 0, 0, m); //zeta, eta, and mu need to be set to specific values for more complex elements
-	}
-	return global_shape_derivatives;
-}
-
-const std::vector<std::vector<double>>& TetrahedralElement::GetNodes()
-{
-	return nodes;
-}
-
-
-//Mutators
-void TetrahedralElement::AddNode(const std::vector<double>& n)
-{
-	nodes.push_back(n);
 }
