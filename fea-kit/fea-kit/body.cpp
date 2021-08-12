@@ -30,6 +30,11 @@ void Body::GetBoundaryInfo(std::vector<uint32_t>& b_n, std::string& s, std::vect
 	s = boundary_types[index];
 	b_v = boundary_values[index];
 }
+const double& Body::GetStiffness() { return elastic_modulus; }
+const double& Body::GetConductivity() { return conductivity; }
+const double& Body::GetPoisson() { return poisson_ratio; }
+
+
 
 //Mutators
 void Body::AddNode(const std::vector<double>& n)

@@ -113,14 +113,14 @@ void TetrahedralElement::CalcGlobalShapeDerivatives(const double& zeta,const dou
 	for (int i = 0; i < nodes[0].size(); i++) //Rows of jacobian matrix 
 	{
 		//Update b vector with chosen node shape derivatives
-		b.push_back(shape_derivatives[m][i]);
+		b.push_back(ShapeFunctionDerivatives(0, 0, 0, m, i));
 
 		for (int j = 0; j < nodes[0].size(); j++) //Columns of jacobian matrix
 		{
 			double sum = 0;
 			for (int m = 0; m < nodes.size(); m++) //Number of nodes (x = x1*N1 + ... +xm*Nm)
 			{
-				sum += nodes[m][i] * shape_derivatives[m][j];
+				sum += nodes[m][i] * ShapeFunctionDerivatives(0, 0, 0, m, j);
 			}
 			mat[i].push_back(sum);
 		}

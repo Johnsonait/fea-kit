@@ -16,6 +16,7 @@ int Matrix::CountCols()
 
 Matrix::Matrix() //Default constructor
 {
+	matrix = {};
 }
 
 Matrix::Matrix(std::vector<std::vector<double>>& mat) : matrix(mat) {}
@@ -68,4 +69,9 @@ void Matrix::PrintMatrix()
 		}
 		std::cout << "\n";
 	}
+}
+
+std::vector<std::vector<double>>& Matrix::GetMatrix()
+{
+	return matrix;
 }

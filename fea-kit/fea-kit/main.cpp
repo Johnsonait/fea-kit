@@ -14,90 +14,12 @@
 #include "tetrahedral_element.h"
 #include "program.h"
 #include "model.h"
+#include "linear_elastic_solids.h"
 
-void Log(std::string message)
+void Log(const std::string& message)
 {
 	std::cout<< "\n"<< message << "\n";
 }
-
-
-
-//Class to solve problems in linear elasticity 
-class ElasticSolids : public Model
-{
-private:
-	double E, poisson, lambda, G; //Lame parameters.
-
-	std::vector<std::vector<double>> global_k = {};
-
-	Matrix elastic_matrix;
-	Matrix b_matrix;
-
-	void Lame()
-	{
-		lambda = (E*poisson) / ((1+poisson)*(1-(2*poisson)));
-		G = E / (2 * (1 + poisson));
-	}
-
-	//Populates isotropic elasticity matrix with Lame parameters
-	void ConstructElasticMatrix()
-	{
-		std::vector<std::vector<double>> temp = {
-			{((2*G)+lambda),lambda,lambda,0,0,0},
-			{lambda,((2 * G) + lambda),lambda,0,0,0},
-			{lambda,lambda,((2 * G) + lambda),0,0,0},
-			{0,0,0,G,0,0},
-			{0,0,0,0,G,0},
-			{0,0,0,0,0,G} };
-		elastic_matrix = Matrix::Matrix(temp);
-	}
-	//Constructs 6x12 elemental B matrix
-	//Requires global shape function derivatives
-	void ConstructBMatrix(TetrahedralElement& el,Matrix& temp_b)
-	{
-		std::vector<std::vector<double>> nodes = el.GetNodes();
-		el.CalcGlobalShapeDerivatives(0,0,0,0);
-		std::vector<std::vector<double>> global_shape_derivatives = el.GetGlobalShapeDerivatives();
-
-		std::vector<std::vector<double>> Mat;
-		Mat.resize(6); //Set rows of Mat to 6
-
-		for (int m = 0; m < nodes.size(); m++)
-		{
-			for (int i = 0; i < 6; i++) //6 rows
-			{
-				std::vector<std::vector<double>> sub_matrix = {
-					{global_shape_derivatives[m][0],0,0},
-					{0,global_shape_derivatives[m][1],0},
-					{0,0,global_shape_derivatives[m][2]},
-					{0,global_shape_derivatives[m][2],global_shape_derivatives[m][1]},
-					{global_shape_derivatives[m][2],0,global_shape_derivatives[m][0]},
-					{global_shape_derivatives[m][1],global_shape_derivatives[m][0],0}
-				};
-				for (int j = 0; j < 3; j++) //For col of sub-matrix
-				{
-					Mat[i].push_back(sub_matrix[i][j]); //Add rows to full B matrix
-				}
-			}
-		}
-		temp_b = Matrix::Matrix(Mat);
-	}
-
-public:
-	ElasticSolids()//Default constructors
-	{
-		std::cout << "Default constructor: ElasticSolids()" << std::endl;
-	}
-
-	ElasticSolids(Reader& reader, double e, double pois)
-	{
-		E = e;
-		poisson = pois;
-		Lame();
-		ConstructElasticMatrix();
-
-	}
-};
 
 //Quick function to test Quadrature class
 double Funky(double x, double y, double z)
@@ -137,7 +59,5 @@ int main()
 
 	std::vector<std::vector<double>> nodey = {{0,0,0},{1,0,0},{0,1,0},{0,0,1}};
 	int elem[4] = {0,1,2,3};
-
-
 }
 
