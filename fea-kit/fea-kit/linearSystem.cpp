@@ -25,11 +25,8 @@ double LinearSystem::Abs(const double& val)
 }
 
 //Class constructor takes the square system matrix and constraint vector Ax = b --> Matrix*x = Vec
-LinearSystem::LinearSystem(std::vector<std::vector<double>>& Matrix, std::vector<double>& Vec) 
-{
-    A = Matrix;
-    b = Vec;
-}
+LinearSystem::LinearSystem(const std::vector<std::vector<double>>& Matrix, const std::vector<double>& Vec) 
+    : A(Matrix), b(Vec) {}
 
 //Solve system of equations, solution outputted to x that is passed in by reference
 //Uses Gauss-siedel method

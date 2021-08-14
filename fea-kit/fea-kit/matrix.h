@@ -1,13 +1,13 @@
 #pragma once
+#include <vector>
+#include <iostream>
+
+#include "linearsystem.h"
 
 class Matrix
 {
 private:
 	std::vector<std::vector<double>> matrix;
-
-	int CountRows();
-
-	int CountCols();
 
 public:
 	//Constructors
@@ -16,11 +16,23 @@ public:
 	Matrix(std::vector<std::vector<double>>& mat);
 
 	//Operators
-	Matrix operator * (Matrix& B);
+	Matrix operator * (const Matrix&);
+	Matrix operator * (const double& a);
+	Matrix operator + (const Matrix&);
+	Matrix operator - (const Matrix&);
+	Matrix operator ^ (size_t);
+	std::vector<double>& operator [](const std::size_t&);
+	const std::vector<double>& operator [](const std::size_t&) const;
+
 
 	//Useful
-	void Transpose();
+	Matrix& Transpose();
 	void PrintMatrix();
+	int CountRows();
+	int CountRows() const;
+
+	int CountCols();
+	int CountCols() const;
 
 	//Accessors 
 

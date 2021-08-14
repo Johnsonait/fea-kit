@@ -17,11 +17,6 @@ TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>&body_nod
 	}
 
 	jacobian_det = JacobianDet();
-	//Need to call Jacobian to find global shape derivatives before running ConstructBMatrix()
-	for  (uint32_t m = 0; m < 3; ++m)
-	{
-		CalcGlobalShapeDerivatives(0, 0, 0, m);
-	}
 }
 
 //Useful
@@ -134,16 +129,15 @@ void TetrahedralElement::CalcGlobalShapeDerivatives(const double& zeta,const dou
 double TetrahedralElement::JacobianDet() //Calculate the Jacobian determinant
 {
 	//Not necessary but makes the determinant calculation much easier to read
-	double x[4] = {};
-	double y[4] = {};
-	double z[4] = {};
+	double x[4] = {0,0,0,0};
+	double y[4] = {0,0,0,0};
+	double z[4] = {0,0,0,0};
 
-	for (int i = 0; i < nodes[0].size(); i++)
+	for (int i = 0; i < nodes.size(); ++i)
 	{
 		x[i] = nodes[i][0];
 		y[i] = nodes[i][1];
 		z[i] = nodes[i][2];
-
 	}
 
 	return  ((x[1] - x[0]) * (((y[2] - y[0]) * (z[3] - z[0])) - ((y[3] - y[0]) * (z[2] - z[0]))))

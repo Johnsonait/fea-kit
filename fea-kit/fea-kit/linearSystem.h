@@ -13,7 +13,7 @@ private:
 
 public:
 
-    LinearSystem(std::vector<std::vector<double>>& Matrix, std::vector<double>& Vec);
+    LinearSystem(const std::vector<std::vector<double>>& Matrix,const std::vector<double>& Vec);
 
     void Solve(std::vector<double>& x);
 

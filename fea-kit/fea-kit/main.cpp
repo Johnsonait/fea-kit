@@ -38,7 +38,7 @@ int main()
 	LinearSystem System(Mat, b);
 	System.Solve(x);
 	System.PrintSol(x);
-	*/
+	
 
 	Quadrature integrator;
 
@@ -57,7 +57,23 @@ int main()
 	C.Transpose();
 	C.PrintMatrix();
 
-	std::vector<std::vector<double>> nodey = {{0,0,0},{1,0,0},{0,1,0},{0,0,1}};
-	int elem[4] = {0,1,2,3};
+	Matrix D = C * 1.5;
+	D.PrintMatrix();
+	D.Transpose();
+	D.PrintMatrix();
+
+	std::cout << "C: " << std::endl;
+	C.PrintMatrix();
+	std::cout << "D: " << std::endl;
+	D.PrintMatrix();
+
+	(D*C).PrintMatrix();
+	*/
+
+	LinearElasticSolids model;
+	model.Solve();
+
+	
+
 }
 
