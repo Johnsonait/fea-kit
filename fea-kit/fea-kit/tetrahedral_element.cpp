@@ -98,32 +98,35 @@ double TetrahedralElement::ShapeFunctionDerivatives(const double& zeta, const do
 
 //Function that uses jacobian to find global derivatives of shape function 
 //for constructing B matrix
-void TetrahedralElement::CalcGlobalShapeDerivatives(const double& zeta,const double& eta,const double& mu, const uint32_t& m)
+void TetrahedralElement::CalcGlobalShapeDerivatives(const double& zeta,const double& eta,const double& mu, const size_t& node_num)
 {
-	std::vector<std::vector<double>> mat = { {},{},{} }; //Matrix for jacobian system solution
-	std::vector<double> b = {};//Vector "solution" for jacobian system 
-
-	// For all coordinates associated with nodes (3)
-	// Seems iffy, double check this
-	for (int i = 0; i < nodes[0].size(); i++) //Rows of jacobian matrix 
+	for (size_t m = 0; m < node_num; ++m)
 	{
-		//Update b vector with chosen node shape derivatives
-		b.push_back(ShapeFunctionDerivatives(0, 0, 0, m, i));
+		std::vector<std::vector<double>> mat = { {},{},{} }; //Matrix for jacobian system solution
+		std::vector<std::vector<double>> b = { {} };//Vector "solution" for jacobian system 
 
-		for (int j = 0; j < nodes[0].size(); j++) //Columns of jacobian matrix
+		// For all coordinates associated with nodes (3)
+		// Seems iffy, double check this
+		for (int i = 0; i < nodes[0].size(); i++) //Rows of jacobian matrix 
 		{
-			double sum = 0;
-			for (int m = 0; m < nodes.size(); m++) //Number of nodes (x = x1*N1 + ... +xm*Nm)
+			//Update b vector with chosen node shape derivatives
+			b[0].push_back(ShapeFunctionDerivatives(0, 0, 0, m, i));
+
+			for (int j = 0; j < nodes[0].size(); j++) //Columns of jacobian matrix
 			{
-				sum += nodes[m][i] * ShapeFunctionDerivatives(0, 0, 0, m, j);
+				double sum = 0;
+				for (int m = 0; m < nodes.size(); m++) //Number of nodes (x = x1*N1 + ... +xm*Nm)
+				{
+					sum += nodes[m][i] * ShapeFunctionDerivatives(0, 0, 0, m, j);
+				}
+				mat[i].push_back(sum);
 			}
-			mat[i].push_back(sum);
 		}
+		LinearSystem temp_system(mat, b);
+		//Update globe_shape_derivatives with solution jacobian equation
+		//Can create B matrix after getting global shape derivatives
+		temp_system.Solve(global_shape_derivatives[m]); //Update global shape derivates
 	}
-	LinearSystem temp_system(mat, b);
-	//Update globe_shape_derivatives with solution jacobian equation
-	//Can create B matrix after getting global shape derivatives
-	temp_system.Solve(global_shape_derivatives[m]); //Update global shape derivates
 }
 
 double TetrahedralElement::JacobianDet() //Calculate the Jacobian determinant

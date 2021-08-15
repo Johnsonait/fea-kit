@@ -22,7 +22,6 @@ private:
 
 	void Lame();
 	//Populates isotropic elasticity matrix with Lame parameters
-
 	void ConstructElasticMatrix();
 
 	//Constructs 6x12 elemental B matrix

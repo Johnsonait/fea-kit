@@ -1,7 +1,5 @@
 #include "linear_elastic_solids.h"
 
-
-
 void LinearElasticSolids::Lame()
 {
 	lambda = (E * poisson) / ((1 + poisson) * (1 - (2 * poisson)));
@@ -18,18 +16,15 @@ void LinearElasticSolids::ConstructElasticMatrix()
 		{0,0,0,G,0,0},
 		{0,0,0,0,G,0},
 		{0,0,0,0,0,G} };
-	elastic_matrix = Matrix::Matrix(temp);
+	Matrix mat(temp);
+	elastic_matrix = mat;
 }
 //Constructs 6x12 elemental B matrix
 //Requires global shape function derivatives
 Matrix LinearElasticSolids::ConstructBMatrix(const double& zeta,const double& eta, const double& mu, Element* el)
 {
 	std::vector<std::vector<double>> nodes = el->GetNodes();
-	//Update global shape derivatives for all nodes then get them to operate on
-	for (size_t m = 0; m < nodes.size(); ++m)
-	{
-		el->CalcGlobalShapeDerivatives(zeta,eta,mu,m);
-	}
+	el->CalcGlobalShapeDerivatives(0, 0, 0, nodes.size());
 	std::vector<std::vector<double>> G = el->GetGlobalShapeDerivatives();
 
 	std::vector<std::vector<double>> Mat; //Temporary matrix to be returned as matrix

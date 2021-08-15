@@ -25,6 +25,18 @@ Matrix::Matrix() //Default constructor
 {
 	matrix = {};
 }
+Matrix::Matrix(const size_t& rows, const size_t& cols)
+{
+	matrix.resize(rows);
+	for (size_t i = 0; i < rows; i++)
+	{
+		matrix[i].resize(cols);
+		for (size_t j = 0; j < cols; j++)
+		{
+			matrix[i][j] = 0;
+		}
+	}
+}
 
 Matrix::Matrix(std::vector<std::vector<double>>& mat) : matrix(mat) {}
 
@@ -106,7 +118,7 @@ Matrix Matrix::operator - (const Matrix& b)
 	return ret;
 }
 
-Matrix Matrix::operator ^ (size_t n)
+Matrix Matrix::operator ^ (const size_t& n)
 {
 	Matrix temp = *this;
 	for (size_t i = 0; i < n; ++i)
@@ -157,5 +169,11 @@ void Matrix::PrintMatrix()
 
 std::vector<std::vector<double>>& Matrix::GetMatrix()
 {
+	return matrix;
+}
+
+const std::vector<std::vector<double>>& Matrix::GetMatrix() const
+{
+
 	return matrix;
 }

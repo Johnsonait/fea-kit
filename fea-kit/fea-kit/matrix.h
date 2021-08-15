@@ -2,8 +2,6 @@
 #include <vector>
 #include <iostream>
 
-#include "linearsystem.h"
-
 class Matrix
 {
 private:
@@ -12,7 +10,7 @@ private:
 public:
 	//Constructors
 	Matrix();
-
+	Matrix(const size_t& rows, const size_t& cols);
 	Matrix(std::vector<std::vector<double>>& mat);
 
 	//Operators
@@ -20,7 +18,7 @@ public:
 	Matrix operator * (const double& a);
 	Matrix operator + (const Matrix&);
 	Matrix operator - (const Matrix&);
-	Matrix operator ^ (size_t);
+	Matrix operator ^ (const size_t&);
 	std::vector<double>& operator [](const std::size_t&);
 	const std::vector<double>& operator [](const std::size_t&) const;
 
@@ -37,4 +35,5 @@ public:
 	//Accessors 
 
 	std::vector<std::vector<double>>& GetMatrix();
+	const std::vector<std::vector<double>>& GetMatrix() const;
 };

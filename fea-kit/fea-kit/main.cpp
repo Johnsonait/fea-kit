@@ -29,15 +29,18 @@ double Funky(double x, double y, double z)
 
 int main()
 {
-	/*
-	std::vector<std::vector<double>> Mat = {{1,0,0,0},{2,4,3,0.5},{1,3,5,2},{1,1,1,1}};
-	std::vector<double> b = {1,1,1,1};
+	/**/
+	std::vector<std::vector<double>> temp_Mat = { {1,0,0,0},{2,4,3,0.5},{1,3,5,2},{1,1,1,1} };
+	std::vector<std::vector<double>> temp_b = {{ 1,1,1,1 }};
 
 	std::vector<double> x;
 	 
-	LinearSystem System(Mat, b);
-	System.Solve(x);
-	System.PrintSol(x);
+	Matrix Mat(temp_Mat), b(temp_b);
+
+	LinearSystem system(Mat, b);
+
+	system.Solve(x);
+	system.PrintSol(x);
 	
 
 	Quadrature integrator;
@@ -68,12 +71,9 @@ int main()
 	D.PrintMatrix();
 
 	(D*C).PrintMatrix();
-	*/
+	
 
 	LinearElasticSolids model;
 	model.Solve();
-
-	
-
 }
 
