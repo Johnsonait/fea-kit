@@ -100,6 +100,7 @@ double TetrahedralElement::ShapeFunctionDerivatives(const double& zeta, const do
 //for constructing B matrix
 void TetrahedralElement::CalcGlobalShapeDerivatives(const double& zeta,const double& eta,const double& mu, const size_t& node_num)
 {
+	/*
 	for (size_t m = 0; m < node_num; ++m)
 	{
 		std::vector<std::vector<double>> mat = { {},{},{} }; //Matrix for jacobian system solution
@@ -127,6 +128,37 @@ void TetrahedralElement::CalcGlobalShapeDerivatives(const double& zeta,const dou
 		//Can create B matrix after getting global shape derivatives
 		temp_system.Solve(global_shape_derivatives[m]); //Update global shape derivates
 	}
+	*/
+	//Here the global shape derivatives are found using a hand-calculated solution, bypasses the expensive linear system procedure above
+	//Variables x,y,z defined here to help track indices
+	int x = 0, y = 1, z = 2;
+	//dN_0/dx
+	global_shape_derivatives[0][x] = ((nodes[2][1]*nodes[1][2]) -(nodes[3][1]*nodes[1][2]) -(nodes[1][1]*nodes[2][2]) +(nodes[3][1]*nodes[2][2]) +(nodes[1][1]*nodes[3][2]) -(nodes[2][1]*nodes[3][2])) / jacobian_det;
+	//dN_0/dy
+	global_shape_derivatives[0][y] = ((-1*(nodes[2][x]*nodes[1][z]))+(nodes[3][x]*nodes[1][z])+(nodes[1][x]*nodes[2][z])-(nodes[3][x]*nodes[2][z])-(nodes[1][x]*nodes[3][z])+(nodes[2][x]*nodes[3][z]))/ jacobian_det;
+	//dN_0/dz
+	global_shape_derivatives[0][z] = ((nodes[2][x]*nodes[1][y])-(nodes[3][x]*nodes[1][y])-(nodes[1][x]*nodes[2][y])+(nodes[3][x]*nodes[2][y])+(nodes[1][x]*nodes[3][y])-(nodes[2][x]*nodes[3][y]))/ jacobian_det;
+
+	//dN_1/dx
+	global_shape_derivatives[1][x] = ((-1*(nodes[2][y]*nodes[0][z]))+(nodes[3][y]*nodes[0][z])+(nodes[0][y]*nodes[2][z])-(nodes[3][y]*nodes[2][z])-(nodes[0][y]*nodes[3][z])+(nodes[2][y]*nodes[3][z]))/ jacobian_det;
+	//dN_1/dy
+	global_shape_derivatives[1][y] = ((nodes[2][x]*nodes[0][z])-(nodes[3][x]*nodes[0][z])-(nodes[0][x]*nodes[2][z])+(nodes[3][x]*nodes[2][z])+(nodes[0][x]*nodes[3][z])-(nodes[2][x]*nodes[3][z])) / jacobian_det;
+	//dN_1/dz
+	global_shape_derivatives[1][z] = ((-1*(nodes[2][x]*nodes[0][y]))+(nodes[3][x]*nodes[0][y])+(nodes[0][x]*nodes[2][y])-(nodes[3][x]*nodes[2][y])-(nodes[0][x]*nodes[3][y])+(nodes[2][x]*nodes[3][y])) / jacobian_det;
+	
+	//dN_2/dx
+	global_shape_derivatives[2][x] = ((nodes[1][y]*nodes[0][z])-(nodes[3][y]*nodes[0][z])-(nodes[0][y]*nodes[1][z])+(nodes[3][y]*nodes[1][z])+(nodes[0][y]*nodes[3][z])-(nodes[1][y]*nodes[3][z])) / jacobian_det;
+	//dN_2/dy
+	global_shape_derivatives[2][y] = ((-1*(nodes[1][x]*nodes[0][z]))+(nodes[3][x]*nodes[0][z])+(nodes[0][x] * nodes[1][z])-(nodes[3][x] * nodes[1][z])-(nodes[0][x] * nodes[3][z])+(nodes[1][x] * nodes[3][x]))/ jacobian_det;
+	//dN_2/dz
+	global_shape_derivatives[2][z] = ((nodes[1][x]*nodes[0][y])-(nodes[3][x] * nodes[0][y])-(nodes[0][x] * nodes[1][y])+(nodes[3][x] * nodes[1][y])+(nodes[0][x] * nodes[3][y])-(nodes[1][x] * nodes[3][y]))/ jacobian_det;
+
+	//dN_3/dx
+	global_shape_derivatives[3][x] = ((-1*(nodes[1][y]*nodes[0][z]))+(nodes[2][y] * nodes[0][z])+(nodes[0][y] * nodes[1][z])-(nodes[2][y] * nodes[1][z])-(nodes[0][y] * nodes[2][z])+(nodes[1][y] * nodes[2][z]))/ jacobian_det;
+	//dN_3/dy
+	global_shape_derivatives[3][y] = ((nodes[1][x]*nodes[0][z])-(nodes[2][x]*nodes[0][z])-(nodes[0][x] * nodes[1][z])+(nodes[2][x] * nodes[1][z])+(nodes[0][x] * nodes[2][z])-(nodes[1][x] * nodes[2][z])) / jacobian_det;
+	//dN_3/dz
+	global_shape_derivatives[3][z] = ((-1*(nodes[1][x]*nodes[0][y]))+(nodes[2][x] * nodes[0][y])+(nodes[0][x] * nodes[1][y])-(nodes[2][x] * nodes[1][y])-(nodes[0][x] * nodes[2][y])+(nodes[1][x] * nodes[2][y])) / jacobian_det;
 }
 
 double TetrahedralElement::JacobianDet() //Calculate the Jacobian determinant
