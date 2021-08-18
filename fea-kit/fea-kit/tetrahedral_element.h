@@ -16,7 +16,9 @@ private:
 public:
 	//Constructors
 	TetrahedralElement();
-	TetrahedralElement(std::vector<std::vector<double>>& body_nodes, int element[4]);
+	TetrahedralElement(std::vector<std::vector<double>>& body_nodes,std::vector<uint32_t>&);
+	//Destructor
+	~TetrahedralElement();
 
 	//Element shape functions in local coordinate system
 	//Simple for tets but added for potentential future uses

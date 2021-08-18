@@ -8,7 +8,7 @@ TetrahedralElement::TetrahedralElement()
 	jacobian_det = 0;
 }
 
-TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>&body_nodes, int element[4])
+TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>& body_nodes, std::vector<uint32_t>& element)
 {
 	for (int i = 0; i < body_nodes.size(); i++)
 	{
@@ -18,6 +18,9 @@ TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>&body_nod
 
 	jacobian_det = JacobianDet();
 }
+//Destructor
+TetrahedralElement::~TetrahedralElement() {}
+
 
 //Useful
 double TetrahedralElement::ShapeFunction(const double& zeta,const double& eta,const double& mu,const uint32_t& m)
