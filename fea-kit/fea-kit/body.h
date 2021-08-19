@@ -1,10 +1,14 @@
 #pragma once
+#include <vector>
+#include <string>
+
+#include "element.h"
 
 class Body
 {
 private:
 	std::vector<std::vector<double>> nodes;
-	std::vector<std::vector<uint32_t>> elements;
+	std::vector<std::vector<uint32_t>> element_id;
 	std::vector<std::vector<double>> displacement;
 	std::vector<std::vector<double>> strain;
 	std::vector<std::vector<double>> stress;
@@ -33,6 +37,9 @@ public:
 	const double& GetStiffness();
 	const double& GetPoisson();
 	const double& GetConductivity();
+	uint32_t GetNodeNum();
+	uint32_t GetDOF();
+	uint32_t GetElementCount();
 
 
 	//Mutators

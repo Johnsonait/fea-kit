@@ -15,6 +15,7 @@ public:
 
 	//Operators
 	Matrix operator * (const Matrix&);
+	Matrix operator * (const Matrix&) const;
 	Matrix operator * (const double& a);
 	Matrix operator + (const Matrix&);
 	Matrix operator - (const Matrix&);
@@ -25,6 +26,7 @@ public:
 
 	//Useful
 	Matrix& Transpose();
+	Matrix& GetTranspose() const;
 	void PrintMatrix();
 	int CountRows();
 	int CountRows() const;

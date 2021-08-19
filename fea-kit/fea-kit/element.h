@@ -33,7 +33,7 @@ public:
 	const std::vector<std::vector<double>>& GetGlobalShapeDerivatives();
 	const std::vector<std::vector<double>>& GetNodes();
 	const double& GetJacobianDet();
-
+	virtual const double& GetJacobianDet(double,double,double);
 	//Mutators
 	void AddNode(const std::vector<double>& n);
 	void SetGlobalElements(const std::vector<uint32_t>& el);

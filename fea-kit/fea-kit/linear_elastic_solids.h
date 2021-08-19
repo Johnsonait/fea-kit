@@ -9,6 +9,7 @@
 #include "tetrahedral_element.h"
 #include "body.h"
 #include "reader.h"
+#include "quadrature.h"
 
 
 //Class to solve problems in linear elasticity 
@@ -29,12 +30,11 @@ private:
 
 	void InitMatrices(std::shared_ptr<std::vector<std::vector<double>>>,const uint32_t&,const uint32_t&);
 
-	//Constructs 6x12 elemental B matrix
-	//Requires global shape function derivatives
-	Matrix ConstructBMatrix(const double&,const double&,const double&,Element* el);
+	void CalculateLocalK(Matrix&, std::shared_ptr<Element> );
+	void CalculateLocalForce(Matrix&,std::shared_ptr<Element>);
 
-	void CalculateLocalK(Matrix&,Element* el);
-	void AssembleStiffness(Matrix&);
+	void AssembleStiffness(Matrix&,const std::vector<uint32_t>&);
+	void AssembleForce(Matrix&, const std::vector<uint32_t>&);
 
 public:
 	LinearElasticSolids();
@@ -42,4 +42,6 @@ public:
 	LinearElasticSolids(Reader& reader, Body& body);
 
 	void Solve(); 
+	Matrix ConstructBMatrix(const double&, const double&, const double&, std::shared_ptr<Element>);
+	Matrix& GetElasticMatrix();
 };

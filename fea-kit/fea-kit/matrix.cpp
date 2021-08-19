@@ -65,6 +65,30 @@ Matrix Matrix::operator * (const Matrix& B)
 	Matrix ret(temp);
 	return ret;
 }
+Matrix Matrix::operator * (const Matrix& B) const
+{
+	std::vector<std::vector<double>> temp;
+	temp.resize(this->CountRows());
+	for (size_t n = 0; n < temp.size(); ++n)
+	{
+		temp[n].resize(B.CountCols());
+	}
+
+	for (size_t i = 0; i < this->CountRows(); i++)
+	{
+		for (size_t j = 0; j < B.CountCols(); j++)
+		{
+			double sum = 0;
+			for (size_t k = 0; k < B.CountRows(); k++)
+			{
+				sum += matrix[i][k] * B[k][j];
+			}
+			temp[i][j] = sum;
+		}
+	}
+	Matrix ret(temp);
+	return ret;
+}
 
 //Operator to be used for scalar multiplication of matrices
 Matrix Matrix::operator * (const double& a)
@@ -152,6 +176,21 @@ Matrix& Matrix::Transpose()
 	}
 	matrix = temp;
 	return *this;
+}
+Matrix& Matrix::GetTranspose() const 
+{
+	std::vector<std::vector<double>> temp;
+	temp.resize(CountCols());
+
+	for (int i = 0; i < CountRows(); i++)
+	{
+		for (int j = 0; j < CountCols(); j++)
+		{
+			temp[j].push_back(matrix[i][j]);
+		}
+	}
+	Matrix ret(temp);
+	return ret;
 }
 
 void Matrix::PrintMatrix()

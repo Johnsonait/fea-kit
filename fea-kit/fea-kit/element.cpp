@@ -20,6 +20,11 @@ double Element::JacobianDet()
 	return 0;
 }
 
+const double& Element::GetJacobianDet(double, double, double)
+{
+	return 0;
+}
+
 double Element::ShapeFunctionDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m, const uint32_t& direction)
 {
 	return 0;

@@ -3,8 +3,9 @@
 #include <functional>
 
 #include "matrix.h"
-
-//Class to implement Gaussian Quadrature on an arbitrary function that takes and returns doubles
+#include "element.h"
+#include "linear_elastic_solids.h"
+//Class to implement Gaussian Quadrature on an arbitrary function that takes and returns doubles or matrices of doubles
 class Quadrature
 {
 private:
@@ -24,6 +25,6 @@ public:
 	//Gaussian Quadrature for integration of matrices on 2-d fields
 	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, Matrix)> func, const Matrix& mat);
 	//Gaussian Quadrature for integration of matrices on 3-d fields
-	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, Matrix)> func, const Matrix& mat);
+	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, Matrix, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>, LinearElasticSolids*);
 
 };

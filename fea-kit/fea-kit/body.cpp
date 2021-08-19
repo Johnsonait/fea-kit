@@ -1,13 +1,10 @@
-#include <vector>
-#include <string>
-
 #include "body.h"
 
 //Constructors
 Body::Body()
 {
 	nodes = {};
-	elements = {};
+	element_id = {};
 	displacement = {};
 	strain = {};
 	stress = {};
@@ -19,7 +16,7 @@ Body::Body()
 
 //Accessors
 const std::vector<std::vector<double>>& Body::GetNodes() { return nodes; }
-const std::vector<std::vector<uint32_t>>& Body::GetElements() { return elements; }
+const std::vector<std::vector<uint32_t>>& Body::GetElements() { return element_id; }
 const std::vector<std::vector<double>>& Body::GetDisplacement() { return displacement; }
 const std::vector<std::vector<double>>& Body::GetStrain() { return strain; }
 const std::vector<std::vector<double>>& Body::GetStress() { return stress; }
@@ -34,7 +31,18 @@ const double& Body::GetStiffness() { return elastic_modulus; }
 const double& Body::GetConductivity() { return conductivity; }
 const double& Body::GetPoisson() { return poisson_ratio; }
 
-
+uint32_t Body::GetNodeNum()
+{
+	return nodes.size();
+}
+uint32_t Body::GetDOF()
+{
+	return nodes[0].size();
+}
+uint32_t Body::GetElementCount()
+{
+	return element_id.size();
+}
 
 //Mutators
 void Body::AddNode(const std::vector<double>& n)
@@ -43,7 +51,7 @@ void Body::AddNode(const std::vector<double>& n)
 }
 void Body::AddElement(const std::vector<uint32_t>& e) 
 {
-	elements.push_back(e);
+	element_id.push_back(e);
 }
 void Body::AddBoundary(const std::vector<uint32_t>& b_n, const std::string& s, const std::vector<double>& b_v)
 {

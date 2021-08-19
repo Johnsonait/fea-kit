@@ -182,3 +182,8 @@ double TetrahedralElement::JacobianDet() //Calculate the Jacobian determinant
 		- ((y[1] - y[0]) * (((x[2] - x[0]) * (z[3] - z[0])) - ((x[3] - x[0]) * (z[1] - z[0]))))
 		+ ((z[1] - z[0]) * (((x[2] - x[0]) * (y[3] - y[0])) - ((x[3] - x[0]) * (y[2] - y[0]))));
 }
+
+const double& TetrahedralElement::GetJacobianDet(double, double, double)
+{
+	return JacobianDet();
+}

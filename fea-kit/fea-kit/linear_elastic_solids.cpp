@@ -35,7 +35,7 @@ void LinearElasticSolids::InitMatrices(std::shared_ptr<std::vector<std::vector<d
 
 //Constructs 6x12 elemental B matrix
 //Requires global shape function derivatives
-Matrix LinearElasticSolids::ConstructBMatrix(const double& zeta,const double& eta, const double& mu, Element* el)
+Matrix LinearElasticSolids::ConstructBMatrix(const double& zeta,const double& eta, const double& mu, std::shared_ptr<Element> el)
 {
 	std::vector<std::vector<double>> nodes = el->GetNodes();
 	el->CalcGlobalShapeDerivatives(zeta, eta, mu, nodes.size());
@@ -67,14 +67,22 @@ Matrix LinearElasticSolids::ConstructBMatrix(const double& zeta,const double& et
 	return ret;
 }
 
-void LinearElasticSolids::CalculateLocalK(Matrix&, Element* el)
+//This function is used to update the provided local_k matrix using quadrature integrator
+void LinearElasticSolids::CalculateLocalK(Matrix& local_k, std::shared_ptr<Element> el_ptr)
 {
-	return;
+	Quadrature integrator;
+	local_k = integrator.Integrate(2, StiffnessIntegrand, local_k, el_ptr, this);
 }
 
-void LinearElasticSolids::AssembleStiffness(Matrix& mat)
+void LinearElasticSolids::AssembleStiffness(Matrix& local_k,const std::vector<uint32_t>& node_ids)
 {
-	return;
+	for (size_t i = 0; i < local_k.CountRows(); ++i)
+	{
+		for (size_t j = 0; j < local_k.CountCols(); j++)
+		{
+			(*global_k)[node_ids[i] - 1][node_ids[j] - 1] += local_k[i][j];
+		}
+	}
 }
 
 LinearElasticSolids::LinearElasticSolids()//Default constructors
@@ -126,12 +134,30 @@ void LinearElasticSolids::Solve()
 		
 		if (e->size() == 4)
 		{
-			TetrahedralElement* tet_ptr = new TetrahedralElement(local_nodes,local_elems);
+			//Create a heap-allocated tetrahedral element & pointer to it which will be passed to 
+			std::shared_ptr<TetrahedralElement> tet_ptr = std::make_shared<TetrahedralElement>(local_nodes, local_elems);
 			//TODO
+			//Update local stiffness and force vectors based on element and model information
 			CalculateLocalK(local_k,tet_ptr);
-			delete tet_ptr;
+			CalculateLocalForce(local_f,tet_ptr);
 		}
 		//TODO
-		AssembleStiffness(local_k);
+		//
+		AssembleStiffness(local_k,*e);
+		AssembleForce(local_f,*e);
 	}
+}
+
+Matrix& LinearElasticSolids::GetElasticMatrix()
+{
+	return this->elastic_matrix;
+}
+
+Matrix& StiffnessIntegrand(double eta, double zeta, double mu, Matrix mat,std::shared_ptr<Element> el_ptr,LinearElasticSolids* model)
+{
+	const Matrix B = model->ConstructBMatrix(eta,zeta,mu, el_ptr);
+	const Matrix B_T = B.GetTranspose();
+	const Matrix C = model->GetElasticMatrix();
+	Matrix ret = B_T * C * B * el_ptr->GetJacobianDet();
+	return ret;
 }

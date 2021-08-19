@@ -93,7 +93,7 @@ Matrix& Integrate(const int& points, std::function<Matrix& (double, double, Matr
 }
 
 //Gaussian Quadrature for integration of matrices on 3-d fields
-Matrix& Quadrature::Integrate(const int& points, std::function<Matrix& (double, double, double, Matrix)> func, const Matrix& mat)
+Matrix& Quadrature::Integrate(const int& points, std::function<Matrix& (double, double, double, Matrix, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
 {
 	int index = points - 1;
 	//Construct result matrix of the appropriate size
@@ -104,7 +104,7 @@ Matrix& Quadrature::Integrate(const int& points, std::function<Matrix& (double, 
 		{
 			for (int k = 0; k < points; k++)
 			{
-				result = result + (func(QUADRATURE_POINTS[index][i], QUADRATURE_POINTS[index][j], QUADRATURE_POINTS[index][k],mat)
+				result = result + (func(QUADRATURE_POINTS[index][i], QUADRATURE_POINTS[index][j], QUADRATURE_POINTS[index][k],mat,el_ptr,model)
 					*(QUADRATURE_WEIGHTS[index][i] * QUADRATURE_WEIGHTS[index][j] * QUADRATURE_WEIGHTS[index][k]));
 			}
 		}

@@ -26,4 +26,6 @@ public:
 	double ShapeFunctionDerivatives(const double&, const double&, const  double&, const uint32_t&, const uint32_t&) override;
 	void CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const double& mu, const size_t& node_num) override;
 
+	const double& GetJacobianDet(double, double, double) override;
+
 };
