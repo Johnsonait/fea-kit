@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 #include <memory>
+#include <functional>
 
 #include "model.h"
 #include "matrix.h"
@@ -9,7 +10,7 @@
 #include "tetrahedral_element.h"
 #include "body.h"
 #include "reader.h"
-#include "quadrature.h"
+//#include "quadrature.h"
 
 
 //Class to solve problems in linear elasticity 
@@ -32,9 +33,14 @@ private:
 
 	void CalculateLocalK(Matrix&, std::shared_ptr<Element> );
 	void CalculateLocalForce(Matrix&,std::shared_ptr<Element>);
+	void CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr);
+	void CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr);
 
 	void AssembleStiffness(Matrix&,const std::vector<uint32_t>&);
 	void AssembleForce(Matrix&, const std::vector<uint32_t>&);
+
+	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>, LinearElasticSolids*);
+
 
 public:
 	LinearElasticSolids();
@@ -43,5 +49,9 @@ public:
 
 	void Solve(); 
 	Matrix ConstructBMatrix(const double&, const double&, const double&, std::shared_ptr<Element>);
+	Matrix ConstructShapeMatrix(const double& zeta, const double& eta, const double& mu, std::shared_ptr<Element> el);
 	Matrix& GetElasticMatrix();
+
+	Body& GetBody();
+
 };

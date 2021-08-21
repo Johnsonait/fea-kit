@@ -19,10 +19,12 @@ private:
 public:
     LinearSystem();
     LinearSystem(const std::vector<std::vector<double>>& mat,const std::vector<std::vector<double>>& vec);
+    LinearSystem(std::shared_ptr<std::vector<std::vector<double>>>& mat, std::shared_ptr<std::vector<std::vector<double>>>& vec);
     LinearSystem(const Matrix& mat, const Matrix& vec);
     LinearSystem(Matrix& mat, Matrix& vec);
 
     void Solve(std::vector<double>& x);
+    void Solve(std::shared_ptr<std::vector<std::vector<double>>> x);
 
     void PrintSol(std::vector<double>& x);
 };

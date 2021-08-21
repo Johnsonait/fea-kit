@@ -177,6 +177,7 @@ Matrix& Matrix::Transpose()
 	matrix = temp;
 	return *this;
 }
+
 Matrix& Matrix::GetTranspose() const 
 {
 	std::vector<std::vector<double>> temp;

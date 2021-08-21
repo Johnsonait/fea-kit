@@ -31,6 +31,12 @@ LinearSystem::LinearSystem(const std::vector<std::vector<double>>& mat, const st
 
 }
 
+LinearSystem::LinearSystem(std::shared_ptr<std::vector<std::vector<double>>>& mat, std::shared_ptr<std::vector<std::vector<double>>>& vec)
+{
+    matrix = *mat;
+    b = *vec;
+}
+
 LinearSystem::LinearSystem(const Matrix& mat, const Matrix& vec)
 {
     matrix = mat.GetMatrix();
@@ -68,6 +74,32 @@ void LinearSystem::Solve(std::vector<double>& x)
             x[i] *= 1 / matrix[i][i];
         }
         residual = abs(normStore - VectorNorm(x));
+        count += 1;
+    }
+}
+void LinearSystem::Solve(std::shared_ptr<std::vector<std::vector<double>>> x)
+{
+    (*x)[0].resize(b[0].size(), 0.1);
+
+    double residual = 1.0;
+    int count = 0;
+
+    while (residual > 0.000001 && count < 10000)
+    {
+        double normStore = VectorNorm((*x)[0]);
+        for (int i = 0; i < b[0].size(); i++)
+        {
+            (*x)[0][i] = b[0][i];
+            for (int j = 0; j < b[0].size(); j++)
+            {
+                if (i != j)
+                {
+                    (*x)[0][i] -= (*x)[0][j] * matrix[i][j];
+                }
+            }
+            (*x)[0][i] *= 1 / matrix[i][i];
+        }
+        residual = abs(normStore - VectorNorm((*x)[0]));
         count += 1;
     }
 }

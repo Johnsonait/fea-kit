@@ -1,5 +1,43 @@
 #include "linear_elastic_solids.h"
 
+static const std::vector<std::vector<double>> QUADRATURE_POINTS = {
+   {0},
+   {-0.5773502691896257,0.5773502691896257},
+   {0,-0.7745966692414834,0.7745966692414834},
+   {0.6521451548625461,0.6521451548625461,0.3478548451374538,0.3478548451374538},
+};
+
+static const std::vector<std::vector<double>> QUADRATURE_WEIGHTS = {
+	{2},
+	{1,1},
+	{0.8888888888888888,0.5555555555555556,0.5555555555555556},
+	{-0.3399810435848563,0.3399810435848563,-0.8611363115940526,0.8611363115940526},
+};
+
+static const double GRAVITY = 9.81;
+
+Matrix& StiffnessIntegrand(double eta, double zeta, double mu, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+{
+	const Matrix B = model->ConstructBMatrix(eta, zeta, mu, el_ptr);
+	const Matrix B_T = B.GetTranspose();
+	const Matrix C = model->GetElasticMatrix();
+
+	//Final integrand value
+	Matrix ret = B_T * C * B * el_ptr->GetJacobianDet();
+	return ret;
+}
+
+//Finite element form of integrand used for updating local force vector to include body forces
+Matrix& BodyForceIntegrand(double eta, double zeta, double mu, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+{
+	Matrix N = model->ConstructShapeMatrix(eta,zeta,mu,el_ptr);
+	std::vector<std::vector<double>> temp = { {0,0,-GRAVITY} };
+	Matrix body_force(temp);
+
+	Matrix ret = (N*body_force)*el_ptr->GetJacobianDet();
+	return ret;
+}
+
 void LinearElasticSolids::Lame() //Pronounced Lam-eh
 {
 	lambda = (E * poisson) / ((1 + poisson) * (1 - (2 * poisson)));
@@ -67,13 +105,39 @@ Matrix LinearElasticSolids::ConstructBMatrix(const double& zeta,const double& et
 	return ret;
 }
 
-//This function is used to update the provided local_k matrix using quadrature integrator
-void LinearElasticSolids::CalculateLocalK(Matrix& local_k, std::shared_ptr<Element> el_ptr)
+//Generates a 3x3*m matrix storing useful version of global shape derivatives in a matrix
+//Used to multiply properties by shape function during formulation of element force vector
+Matrix LinearElasticSolids::ConstructShapeMatrix(const double& zeta, const double& eta, const double& mu, std::shared_ptr<Element> el)
 {
-	Quadrature integrator;
-	local_k = integrator.Integrate(2, StiffnessIntegrand, local_k, el_ptr, this);
+	std::vector<std::vector<double>> nodes = el->GetNodes();
+	el->CalcGlobalShapeDerivatives(zeta, eta, mu, nodes.size());
+	std::vector<std::vector<double>> G = el->GetGlobalShapeDerivatives();
+
+	std::vector<std::vector<double>> Mat; //Temporary matrix to be returned as matrix
+
+	for (size_t m = 0; m < nodes.size();++m)
+	{
+		std::vector<std::vector<double>> sub_matrix = {
+			{el->ShapeFunction(eta,zeta,mu,m),0,0},
+			{0,el->ShapeFunction(eta,zeta,mu,m),0},
+			{0,0,el->ShapeFunction(eta,zeta,mu,m)}
+		};
+
+		Mat.push_back(sub_matrix[0]);
+		Mat.push_back(sub_matrix[1]);
+		Mat.push_back(sub_matrix[2]);
+	}
+	Matrix ret(Mat);
+	return ret;
 }
 
+//This function is used to update the provided local_k matrix using quadrature 
+void LinearElasticSolids::CalculateLocalK(Matrix& local_k, std::shared_ptr<Element> el_ptr)
+{
+	local_k = Integrate(2, StiffnessIntegrand, local_k ,el_ptr, this);
+}
+
+//This function updates the global stiffness matrix from the element stiffness matrix
 void LinearElasticSolids::AssembleStiffness(Matrix& local_k,const std::vector<uint32_t>& node_ids)
 {
 	for (size_t i = 0; i < local_k.CountRows(); ++i)
@@ -83,6 +147,24 @@ void LinearElasticSolids::AssembleStiffness(Matrix& local_k,const std::vector<ui
 			(*global_k)[node_ids[i] - 1][node_ids[j] - 1] += local_k[i][j];
 		}
 	}
+}
+
+//This function is used to update the provided local_f matrix using quadrature 
+//It needs to consider the volume integral over the body and the surface integral over the tractioned surfaces
+void LinearElasticSolids::CalculateLocalForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
+{
+	CalculateBodyForce(local_f, el_ptr);
+	CalculateSurfaceForce(local_f, el_ptr);
+}
+
+void LinearElasticSolids::CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
+{
+	local_f = local_f + Integrate(2, BodyForceIntegrand, local_f, el_ptr, this);
+}
+
+void LinearElasticSolids::CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
+{
+
 }
 
 LinearElasticSolids::LinearElasticSolids()//Default constructors
@@ -115,6 +197,11 @@ LinearElasticSolids::LinearElasticSolids(Reader& reader, Body& body)
 	ConstructElasticMatrix();
 }
 
+Body& LinearElasticSolids::GetBody()
+{
+	return *body_ptr;
+}
+
 void LinearElasticSolids::Solve()
 {
 	const std::vector<std::vector<double>>& nodes = body_ptr->GetNodes();
@@ -136,16 +223,20 @@ void LinearElasticSolids::Solve()
 		{
 			//Create a heap-allocated tetrahedral element & pointer to it which will be passed to 
 			std::shared_ptr<TetrahedralElement> tet_ptr = std::make_shared<TetrahedralElement>(local_nodes, local_elems);
-			//TODO
+
 			//Update local stiffness and force vectors based on element and model information
 			CalculateLocalK(local_k,tet_ptr);
 			CalculateLocalForce(local_f,tet_ptr);
 		}
-		//TODO
-		//
+
+		//Insert element stiffness and force into global system
 		AssembleStiffness(local_k,*e);
 		AssembleForce(local_f,*e);
 	}
+	//Prepare to solve the whole system
+	LinearSystem system(global_k,global_f);
+	//Update the  global solution vector using global force and stiffness matrices
+	system.Solve(global_sol);
 }
 
 Matrix& LinearElasticSolids::GetElasticMatrix()
@@ -153,11 +244,21 @@ Matrix& LinearElasticSolids::GetElasticMatrix()
 	return this->elastic_matrix;
 }
 
-Matrix& StiffnessIntegrand(double eta, double zeta, double mu, Matrix mat,std::shared_ptr<Element> el_ptr,LinearElasticSolids* model)
+Matrix& LinearElasticSolids::Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
 {
-	const Matrix B = model->ConstructBMatrix(eta,zeta,mu, el_ptr);
-	const Matrix B_T = B.GetTranspose();
-	const Matrix C = model->GetElasticMatrix();
-	Matrix ret = B_T * C * B * el_ptr->GetJacobianDet();
-	return ret;
+	int index = points - 1;
+	//Construct result matrix of the appropriate size
+	Matrix result(mat.CountRows(), mat.CountCols());
+	for (int i = 0; i < points; i++)
+	{
+		for (int j = 0; j < points; j++)
+		{
+			for (int k = 0; k < points; k++)
+			{
+				result = result + (func(QUADRATURE_POINTS[index][i], QUADRATURE_POINTS[index][j], QUADRATURE_POINTS[index][k], el_ptr, model)
+					* (QUADRATURE_WEIGHTS[index][i] * QUADRATURE_WEIGHTS[index][j] * QUADRATURE_WEIGHTS[index][k]));
+			}
+		}
+	}
+	return result;
 }
