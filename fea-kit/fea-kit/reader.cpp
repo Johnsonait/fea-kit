@@ -114,7 +114,7 @@ void Reader::AddScalarBound(const std::string& instruction, std::fstream& f, Bod
 		node_list.push_back(static_cast<uint32_t>(std::stoul(CheckComma(input))));
 	}
 
-	body.AddBoundary(node_list, "*DISPLACEMENT", scal);
+	body.AddBoundary(node_list, instruction, scal);
 
 	return;
 }
@@ -138,7 +138,7 @@ void Reader::AddVectorBound(const std::string& inst, std::fstream& f, Body& body
 		node_list.push_back(static_cast<uint32_t>(std::stoul(CheckComma(input))));
 	}
 
-	body.AddBoundary(node_list, "*DISPLACEMENT", vec);
+	body.AddBoundary(node_list, inst, vec);
 
 	return;
 }

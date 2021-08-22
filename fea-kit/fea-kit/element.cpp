@@ -45,6 +45,10 @@ const std::vector<std::vector<double>>& Element::GetNodes()
 {
 	return nodes;
 }
+const std::vector<uint32_t>& Element::GetGlobalIDs()
+{
+	return global_nodes;
+}
 
 const double& Element::GetJacobianDet()
 {

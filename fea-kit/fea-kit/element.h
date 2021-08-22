@@ -32,7 +32,9 @@ public:
 	//Accessors
 	const std::vector<std::vector<double>>& GetGlobalShapeDerivatives();
 	const std::vector<std::vector<double>>& GetNodes();
+	const std::vector<uint32_t>& GetGlobalIDs();
 	const double& GetJacobianDet();
+
 	virtual const double& GetJacobianDet(double,double,double);
 	//Mutators
 	void AddNode(const std::vector<double>& n);

@@ -18,6 +18,7 @@ TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>& body_no
 
 	jacobian_det = JacobianDet();
 }
+
 //Destructor
 TetrahedralElement::~TetrahedralElement() {}
 

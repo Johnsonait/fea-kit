@@ -38,6 +38,7 @@ private:
 
 	void AssembleStiffness(Matrix&,const std::vector<uint32_t>&);
 	void AssembleForce(Matrix&, const std::vector<uint32_t>&);
+	void EnforceBoundaries(Matrix& local_k,Matrix& local_f, std::shared_ptr<Element> tet_ptr);
 
 	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>, LinearElasticSolids*);
 

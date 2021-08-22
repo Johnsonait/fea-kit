@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <algorithm>
 
 #include "element.h"
 
@@ -21,6 +22,7 @@ private:
 	double conductivity;
 	double elastic_modulus;
 	double poisson_ratio;	
+	double density;
 
 public:
 	//Constructors
@@ -34,13 +36,16 @@ public:
 	const std::vector<std::vector<double>>& GetStress();
 	const std::vector<double>& GetTemperature();
 	void GetBoundaryInfo(std::vector<uint32_t>& b_n, std::string& s, std::vector<double>& b_v, const uint32_t& index);
+	uint32_t GetBundaryCount();
 	const double& GetStiffness();
 	const double& GetPoisson();
 	const double& GetConductivity();
+	const double& GetDensity();
 	uint32_t GetNodeNum();
 	uint32_t GetDOF();
 	uint32_t GetElementCount();
 
+	void SearchBoundaryInfo(std::vector<uint32_t>& b_n, std::vector<std::string>& s, std::vector<std::vector<double>>& b_v, std::shared_ptr<Element> el_ptr);
 
 	//Mutators
 	void AddNode(const std::vector<double>& n);

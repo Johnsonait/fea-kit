@@ -38,6 +38,44 @@ Matrix& BodyForceIntegrand(double eta, double zeta, double mu, std::shared_ptr<E
 	return ret;
 }
 
+Matrix& SurfaceForceIntegrand(double eta, double zeta, double mu, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+{
+	Matrix N = model->ConstructShapeMatrix(eta, zeta, mu, el_ptr);
+	
+}
+
+void LinearElasticSolids::EnforceBoundaries(Matrix& local_k, Matrix& local_f, std::shared_ptr<Element> el_ptr)
+{
+	std::vector<uint32_t> bound_nodes;
+	std::vector<std::string> bound_types;
+	std::vector<std::vector<double>> bound_vectors;
+
+	body_ptr->SearchBoundaryInfo(bound_nodes,bound_types,bound_vectors,el_ptr);
+
+	for (size_t bound = 0; bound < bound_nodes.size(); ++bound)
+	{
+		if (bound_types[bound] == "*DISPLACEMENT")
+		{
+			for (size_t node = 0; node < el_ptr->GetGlobalIDs().size();++node)
+			{
+				if (bound_nodes[bound] == el_ptr->GetGlobalIDs()[node])
+				{
+					local_k[node][node] = 1;
+					local_f[][] = 
+				}
+			}
+		}
+		else if (bound_types[bound] == "*TRACTION")
+		{
+
+		}
+		else if (bound_types[bound] == "*PRESSURE")
+		{
+
+		}
+	}
+}
+
 void LinearElasticSolids::Lame() //Pronounced Lam-eh
 {
 	lambda = (E * poisson) / ((1 + poisson) * (1 - (2 * poisson)));
@@ -157,14 +195,16 @@ void LinearElasticSolids::CalculateLocalForce(Matrix& local_f, std::shared_ptr<E
 	CalculateSurfaceForce(local_f, el_ptr);
 }
 
+//Integrate the body-force values to be used in global force-vector
 void LinearElasticSolids::CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
 {
 	local_f = local_f + Integrate(2, BodyForceIntegrand, local_f, el_ptr, this);
 }
 
+//Integrate the surface tractions to be used in global force-vector
 void LinearElasticSolids::CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
 {
-
+	local_f = local_f + Integrate(2,SurfaceForceIntegrand, local_f,el_ptr, this);
 }
 
 LinearElasticSolids::LinearElasticSolids()//Default constructors
@@ -189,7 +229,7 @@ LinearElasticSolids::LinearElasticSolids(Reader& reader, Body& body)
 	uint32_t sz = (body_ptr->GetNodeNum()) * 3;
 	InitMatrices(global_sol,sz,1); 
 	InitMatrices(global_f, sz, 1);
-	InitMatrices(global_sol, sz, sz);//Create square matrix of zeros to be added to during solution;
+	InitMatrices(global_k, sz, sz);//Create square matrix of zeros to be added to during solution;
 
 	E = body_ptr->GetStiffness();
 	poisson = body_ptr->GetPoisson();
@@ -202,6 +242,9 @@ Body& LinearElasticSolids::GetBody()
 	return *body_ptr;
 }
 
+//This is where the overall problem is solved
+//Each element in the problem is used to first construct the element-wise stiffness matrix which is then assembled into the global stiffness matrix
+//The global problem is then solved and the results stored (the result being the displacement values at each node)
 void LinearElasticSolids::Solve()
 {
 	const std::vector<std::vector<double>>& nodes = body_ptr->GetNodes();
@@ -219,6 +262,7 @@ void LinearElasticSolids::Solve()
 			local_nodes.push_back(nodes[(*local_e)-1]);//Note that element id's start at 1 so we need to subtract one to access the proper index
 		}
 		
+		//Four nodes means a linear tetrahedral element (3D elements)
 		if (e->size() == 4)
 		{
 			//Create a heap-allocated tetrahedral element & pointer to it which will be passed to 
@@ -226,7 +270,8 @@ void LinearElasticSolids::Solve()
 
 			//Update local stiffness and force vectors based on element and model information
 			CalculateLocalK(local_k,tet_ptr);
-			CalculateLocalForce(local_f,tet_ptr);
+			EnforceBoundaries(local_k,local_f,tet_ptr);
+			//CalculateLocalForce(local_f,tet_ptr);
 		}
 
 		//Insert element stiffness and force into global system

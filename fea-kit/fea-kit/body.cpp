@@ -21,15 +21,47 @@ const std::vector<std::vector<double>>& Body::GetDisplacement() { return displac
 const std::vector<std::vector<double>>& Body::GetStrain() { return strain; }
 const std::vector<std::vector<double>>& Body::GetStress() { return stress; }
 const std::vector<double>& Body::GetTemperature() { return temperature; }
+
+//Function that takes in references to a set of boundary nodes, a string storing boundary type, a string storing the values associated with the boundary
+//and an index. The index identifies which boundary is the one you want to know about
 void Body::GetBoundaryInfo(std::vector<uint32_t>& b_n, std::string& s, std::vector<double>& b_v, const uint32_t& index)
 {
 	b_n = boundary_nodes[index];
 	s = boundary_types[index];
 	b_v = boundary_values[index];
 }
+
+void Body::SearchBoundaryInfo(std::vector<uint32_t>& b_n, std::vector<std::string>& s, std::vector<std::vector<double>>& b_v, std::shared_ptr<Element> el_ptr)
+{
+	std::vector<uint32_t> global_ids = el_ptr->GetGlobalIDs();
+
+	for (size_t n = 0; n < global_ids.size(); ++n)
+	{
+		for (size_t bound = 0; bound < boundary_nodes.size(); ++bound)
+		{
+			//Search the current boundary to see if the current node is contained in it
+			//If true, update the provided vectors so that the caller knows which nodes have which boundaries
+			if (std::binary_search(boundary_nodes[bound].begin(),boundary_nodes[bound].end(),global_ids[n]))
+			{
+
+				b_n.push_back(global_ids[n]);
+				s.push_back(boundary_types[bound]);
+				b_v.push_back(boundary_values[bound]);
+			}
+		}
+	}
+}
+
+uint32_t Body::GetBundaryCount()
+{
+	return boundary_nodes.size();
+}
+
 const double& Body::GetStiffness() { return elastic_modulus; }
 const double& Body::GetConductivity() { return conductivity; }
 const double& Body::GetPoisson() { return poisson_ratio; }
+const double& Body::GetDensity() { return density; }
+
 
 uint32_t Body::GetNodeNum()
 {
@@ -73,5 +105,9 @@ void Body::SetMaterialProp(const std::string& type, const double& val)
 	else if (type == "*POISSON_RATIO")
 	{
 		poisson_ratio = val;
+	}
+	else if (type == "*DENSITY")
+	{
+		density = val;
 	}
 }	
