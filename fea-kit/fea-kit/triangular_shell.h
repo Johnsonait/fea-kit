@@ -5,7 +5,6 @@ class TriangularShell :
     public Element
 {
 private:
-
 	double JacobianDet() override;
 public:
 	TriangularShell() = default;

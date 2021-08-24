@@ -73,6 +73,7 @@ double TriangularShell::ShapeFunctionDerivatives(const double& zeta, const doubl
 		default:
 			break;
 		}
+	//N_2
 	case 2:
 		switch (direction)
 		{

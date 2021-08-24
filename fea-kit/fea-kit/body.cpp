@@ -43,7 +43,6 @@ void Body::SearchBoundaryInfo(std::vector<uint32_t>& b_n, std::vector<std::strin
 			//If true, update the provided vectors so that the caller knows which nodes have which boundaries
 			if (std::binary_search(boundary_nodes[bound].begin(),boundary_nodes[bound].end(),global_ids[n]))
 			{
-
 				b_n.push_back(global_ids[n]);
 				s.push_back(boundary_types[bound]);
 				b_v.push_back(boundary_values[bound]);
@@ -52,7 +51,7 @@ void Body::SearchBoundaryInfo(std::vector<uint32_t>& b_n, std::vector<std::strin
 	}
 }
 
-uint32_t Body::GetBundaryCount()
+uint32_t Body::GetBoundaryCount()
 {
 	return boundary_nodes.size();
 }

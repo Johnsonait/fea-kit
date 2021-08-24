@@ -36,7 +36,7 @@ public:
 	const std::vector<std::vector<double>>& GetStress();
 	const std::vector<double>& GetTemperature();
 	void GetBoundaryInfo(std::vector<uint32_t>& b_n, std::string& s, std::vector<double>& b_v, const uint32_t& index);
-	uint32_t GetBundaryCount();
+	uint32_t GetBoundaryCount();
 	const double& GetStiffness();
 	const double& GetPoisson();
 	const double& GetConductivity();

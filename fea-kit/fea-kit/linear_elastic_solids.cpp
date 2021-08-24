@@ -40,41 +40,11 @@ Matrix& BodyForceIntegrand(double eta, double zeta, double mu, std::shared_ptr<E
 
 Matrix& SurfaceForceIntegrand(double eta, double zeta, double mu, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
 {
+
 	Matrix N = model->ConstructShapeMatrix(eta, zeta, mu, el_ptr);
 	
 }
 
-void LinearElasticSolids::EnforceBoundaries(Matrix& local_k, Matrix& local_f, std::shared_ptr<Element> el_ptr)
-{
-	std::vector<uint32_t> bound_nodes;
-	std::vector<std::string> bound_types;
-	std::vector<std::vector<double>> bound_vectors;
-
-	body_ptr->SearchBoundaryInfo(bound_nodes,bound_types,bound_vectors,el_ptr);
-
-	for (size_t bound = 0; bound < bound_nodes.size(); ++bound)
-	{
-		if (bound_types[bound] == "*DISPLACEMENT")
-		{
-			for (size_t node = 0; node < el_ptr->GetGlobalIDs().size();++node)
-			{
-				if (bound_nodes[bound] == el_ptr->GetGlobalIDs()[node])
-				{
-					local_k[node][node] = 1;
-					local_f[][] = 
-				}
-			}
-		}
-		else if (bound_types[bound] == "*TRACTION")
-		{
-
-		}
-		else if (bound_types[bound] == "*PRESSURE")
-		{
-
-		}
-	}
-}
 
 void LinearElasticSolids::Lame() //Pronounced Lam-eh
 {
@@ -183,6 +153,56 @@ void LinearElasticSolids::AssembleStiffness(Matrix& local_k,const std::vector<ui
 		for (size_t j = 0; j < local_k.CountCols(); j++)
 		{
 			(*global_k)[node_ids[i] - 1][node_ids[j] - 1] += local_k[i][j];
+		}
+	}
+}
+
+void LinearElasticSolids::EnforceBoundaries(Matrix& local_k, Matrix& local_f, std::shared_ptr<Element> el_ptr)
+{
+	for (size_t boundary = 0; boundary<body_ptr->GetBoundaryCount(); ++boundary)
+	{
+		std::string type = "";
+		std::vector<uint32_t> boundary_nodes = {};
+		std::vector<double> boundary_vector = {};
+		body_ptr->GetBoundaryInfo(boundary_nodes,type,boundary_vector,boundary);
+
+		if (type == "*TRACTION")
+		{
+			std::vector<uint32_t> temp_track;
+			for (uint32_t node : boundary_nodes)
+			{
+				for (auto e_node : el_ptr->GetGlobalIDs())
+				{
+					if (node == e_node)
+					{
+						temp_track.push_back(node);
+						break;
+					}
+				}
+			}
+			//We now have every element node associated with the boundary stored in temp_track.
+			//Now we need to associate the nodes with element-defined bounds
+			//GetBounds should return a vector<uint32_t> that stores the node IDs for each bound
+			std::vector<std::vector<uint32_t>> affected_bound = {};
+			for (auto bound : el_ptr->GetBounds())
+			{
+				bool is_in = true;
+				for (auto node : bound)
+				{
+					if (!binary_search(temp_track.begin(), temp_track.end(), node))
+					{
+						is_in = false;
+					}
+				}
+				if (!is_in)
+				{
+					affected_bound.push_back(bound);
+				}
+			}
+			//Now we have the bounds of the element that are affected by the traction vector 
+			//(Which is stored in boundary_vector)
+			//The next step is to integrate the bounds surfaces in affected_bound with the vector and shape matrices, then update the local_f
+
 		}
 	}
 }
