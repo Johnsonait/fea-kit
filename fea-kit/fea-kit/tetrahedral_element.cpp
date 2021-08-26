@@ -1,5 +1,16 @@
 #include "tetrahedral_element.h"
 
+static const std::vector<std::vector<double>> QUADRATURE_POINTS = {
+	{0.25/6,0.25/6,0.25/6,0.25/6}
+};
+
+
+static const std::vector<std::vector<double>> QUADRATURE_WEIGHTS = {
+	{1},
+	{0.25,0.25,0.25,0.25},
+	{0.8888888888888888,0.5555555555555556,0.5555555555555556},
+	{-0.3399810435848563,0.3399810435848563,-0.8611363115940526,0.8611363115940526},
+};
 
 //Constructors
 TetrahedralElement::TetrahedralElement()
@@ -8,13 +19,21 @@ TetrahedralElement::TetrahedralElement()
 	jacobian_det = 0;
 }
 
-TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>& body_nodes, std::vector<uint32_t>& element)
+TetrahedralElement::TetrahedralElement(std::vector<std::vector<double>>& body_nodes, std::vector<uint32_t>& nodal_ids)
 {
+	//Note that body_nodes is a reference to ALL nodes
 	for (int i = 0; i < body_nodes.size(); i++)
 	{
-		nodes.push_back(body_nodes[element[i]]);
+		nodes.push_back(body_nodes[nodal_ids[i]-1]);
 		global_shape_derivatives.push_back({});
 	}
+	std::vector<std::vector<uint32_t>> temp_bounds = {
+		{nodal_ids[0],nodal_ids[1],nodal_ids[3]},
+		{nodal_ids[0],nodal_ids[1],nodal_ids[2]},
+		{nodal_ids[0],nodal_ids[2],nodal_ids[3]},
+		{nodal_ids[1],nodal_ids[2],nodal_ids[3]}
+	};
+	bounds = temp_bounds;
 
 	jacobian_det = JacobianDet();
 }
@@ -187,4 +206,23 @@ double TetrahedralElement::JacobianDet() //Calculate the Jacobian determinant
 const double& TetrahedralElement::GetJacobianDet(double, double, double)
 {
 	return JacobianDet();
+}
+
+Matrix& TetrahedralElement::Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+{
+	int index = points - 1;
+	//Construct result matrix of the appropriate size
+	Matrix result(mat.CountRows(), mat.CountCols());
+	for (int i = 0; i < points; i++)
+	{
+		for (int j = 0; j < points; j++)
+		{
+			for (int k = 0; k < points; k++)
+			{
+				result = result + (func(QUADRATURE_POINTS[index][i], QUADRATURE_POINTS[index][j], QUADRATURE_POINTS[index][k], el_ptr, model)
+					* (QUADRATURE_WEIGHTS[index][i] * QUADRATURE_WEIGHTS[index][j] * QUADRATURE_WEIGHTS[index][k]));
+			}
+		}
+	}
+	return result;
 }

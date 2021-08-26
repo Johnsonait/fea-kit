@@ -1,7 +1,11 @@
 #pragma once
 #include <iostream>
+#include <functional>
 
 #include "element.h"
+#include "matrix.h"
+
+class LinearElasticSolids;
 
 class TetrahedralElement :
 	public Element
@@ -27,5 +31,5 @@ public:
 	void CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const double& mu, const size_t& node_num) override;
 
 	const double& GetJacobianDet(double, double, double) override;
-
+	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>, LinearElasticSolids*) override;
 };

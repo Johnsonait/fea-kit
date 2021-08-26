@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "linearsystem.h"
+#include "matrix.h"
 
 class Element
 {
@@ -16,6 +17,7 @@ protected:
 	double jacobian_det; //Store element jacobian value (can potentially change in space)
 	std::vector<std::vector<double>> global_shape_derivatives; //Store global shape derivatives for each node
 	std::vector<std::vector<double>> nodes;
+	std::vector<std::vector<uint32_t>> bounds;
 	std::vector<uint32_t> global_nodes; //Store global node indices
 
 public:
@@ -27,6 +29,7 @@ public:
 	virtual double ShapeFunction(const double&, const double&, const  double&, const uint32_t&) = 0;
 	virtual double ShapeFunctionDerivatives(const double&, const double&, const  double&, const uint32_t&, const uint32_t&);
 	virtual void CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m);
+	virtual Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>, LinearElasticSolids*);
 
 
 	//Accessors
@@ -34,6 +37,7 @@ public:
 	const std::vector<std::vector<double>>& GetNodes();
 	const std::vector<uint32_t>& GetGlobalIDs();
 	const double& GetJacobianDet();
+	const std::vector<std::vector<uint32_t>>& GetBounds();
 
 	virtual const double& GetJacobianDet(double,double,double);
 	//Mutators

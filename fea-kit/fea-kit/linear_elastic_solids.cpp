@@ -1,18 +1,21 @@
 #include "linear_elastic_solids.h"
 
+/*
+* Quadrature points for quad-type domains
 static const std::vector<std::vector<double>> QUADRATURE_POINTS = {
    {0},
    {-0.5773502691896257,0.5773502691896257},
    {0,-0.7745966692414834,0.7745966692414834},
    {0.6521451548625461,0.6521451548625461,0.3478548451374538,0.3478548451374538},
 };
-
+* Quadrature weights for quad-type domains
 static const std::vector<std::vector<double>> QUADRATURE_WEIGHTS = {
 	{2},
 	{1,1},
 	{0.8888888888888888,0.5555555555555556,0.5555555555555556},
 	{-0.3399810435848563,0.3399810435848563,-0.8611363115940526,0.8611363115940526},
 };
+*/
 
 static const double GRAVITY = 9.81;
 
@@ -142,7 +145,7 @@ Matrix LinearElasticSolids::ConstructShapeMatrix(const double& zeta, const doubl
 //This function is used to update the provided local_k matrix using quadrature 
 void LinearElasticSolids::CalculateLocalK(Matrix& local_k, std::shared_ptr<Element> el_ptr)
 {
-	local_k = Integrate(2, StiffnessIntegrand, local_k ,el_ptr, this);
+	local_k = el_ptr->Integrate(2, StiffnessIntegrand, local_k ,el_ptr, this);
 }
 
 //This function updates the global stiffness matrix from the element stiffness matrix
@@ -157,7 +160,7 @@ void LinearElasticSolids::AssembleStiffness(Matrix& local_k,const std::vector<ui
 	}
 }
 
-void LinearElasticSolids::EnforceBoundaries(Matrix& local_k, Matrix& local_f, std::shared_ptr<Element> el_ptr)
+void LinearElasticSolids::EnforceSurfaceBounds(Matrix& local_k, Matrix& local_f, std::shared_ptr<Element> el_ptr)
 {
 	for (size_t boundary = 0; boundary<body_ptr->GetBoundaryCount(); ++boundary)
 	{
@@ -182,7 +185,8 @@ void LinearElasticSolids::EnforceBoundaries(Matrix& local_k, Matrix& local_f, st
 			}
 			//We now have every element node associated with the boundary stored in temp_track.
 			//Now we need to associate the nodes with element-defined bounds
-			//GetBounds should return a vector<uint32_t> that stores the node IDs for each bound
+			//GetBounds should return a vector<uint32_t> that stores the node IDs for each bound in the element (eg: a Tetrahedral element
+			//has 4 faces and so four bounds containing 3 global node IDs each)
 			std::vector<std::vector<uint32_t>> affected_bound = {};
 			for (auto bound : el_ptr->GetBounds())
 			{
@@ -202,6 +206,7 @@ void LinearElasticSolids::EnforceBoundaries(Matrix& local_k, Matrix& local_f, st
 			//Now we have the bounds of the element that are affected by the traction vector 
 			//(Which is stored in boundary_vector)
 			//The next step is to integrate the bounds surfaces in affected_bound with the vector and shape matrices, then update the local_f
+			//For now we will just use the bound area to find the total force and average that across the bound nodes
 
 		}
 	}
@@ -218,13 +223,13 @@ void LinearElasticSolids::CalculateLocalForce(Matrix& local_f, std::shared_ptr<E
 //Integrate the body-force values to be used in global force-vector
 void LinearElasticSolids::CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
 {
-	local_f = local_f + Integrate(2, BodyForceIntegrand, local_f, el_ptr, this);
+	local_f = local_f + el_ptr->Integrate(2, BodyForceIntegrand, local_f, el_ptr, this);
 }
 
 //Integrate the surface tractions to be used in global force-vector
 void LinearElasticSolids::CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
 {
-	local_f = local_f + Integrate(2,SurfaceForceIntegrand, local_f,el_ptr, this);
+	local_f = local_f + el_ptr->Integrate(2,SurfaceForceIntegrand, local_f,el_ptr, this);
 }
 
 LinearElasticSolids::LinearElasticSolids()//Default constructors
@@ -272,32 +277,37 @@ void LinearElasticSolids::Solve()
 
 	for (auto e = elems.begin(); e != elems.end(); ++e)
 	{
-		Matrix local_k(e->size(),e->size());
-		Matrix local_f(e->size(),1);
+		//Construct a local K and f matrix sized for the element (dof*#nodes)
+		Matrix local_k(3*e->size(),3*e->size());
+		Matrix local_f(3*e->size(),1);
 
 		std::vector<uint32_t> local_elems = *e; //Store the set of element id's
-		std::vector<std::vector<double>> local_nodes = {};
-		for (auto local_e = local_elems.begin(); local_e != local_elems.end(); ++local_e)
-		{
-			local_nodes.push_back(nodes[(*local_e)-1]);//Note that element id's start at 1 so we need to subtract one to access the proper index
-		}
 		
 		//Four nodes means a linear tetrahedral element (3D elements)
 		if (e->size() == 4)
 		{
 			//Create a heap-allocated tetrahedral element & pointer to it which will be passed to 
-			std::shared_ptr<TetrahedralElement> tet_ptr = std::make_shared<TetrahedralElement>(local_nodes, local_elems);
+			std::shared_ptr<TetrahedralElement> tet_ptr = std::make_shared<TetrahedralElement>(nodes, local_elems);
 
 			//Update local stiffness and force vectors based on element and model information
 			CalculateLocalK(local_k,tet_ptr);
-			EnforceBoundaries(local_k,local_f,tet_ptr);
+			EnforceSurfaceBounds(local_k,local_f,tet_ptr);
 			//CalculateLocalForce(local_f,tet_ptr);
+		}
+		if (e->size() == 8)
+		{
+			//Create a heap-allocated brick element & pointer to be passed to the calulation functions
+			std::shared_ptr<BrickElement> brick_ptr = std::make_shared<BrickElement>(nodes,local_elems);
+
+			CalculateLocalK(local_k, brick_ptr);
+			EnforceSurfaceBounds(local_k, local_f, brick_ptr);
 		}
 
 		//Insert element stiffness and force into global system
 		AssembleStiffness(local_k,*e);
 		AssembleForce(local_f,*e);
 	}
+	EnforceDisplacements(global_k);
 	//Prepare to solve the whole system
 	LinearSystem system(global_k,global_f);
 	//Update the  global solution vector using global force and stiffness matrices
@@ -308,7 +318,7 @@ Matrix& LinearElasticSolids::GetElasticMatrix()
 {
 	return this->elastic_matrix;
 }
-
+/*
 Matrix& LinearElasticSolids::Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
 {
 	int index = points - 1;
@@ -327,3 +337,5 @@ Matrix& LinearElasticSolids::Integrate(const int& points, std::function<Matrix& 
 	}
 	return result;
 }
+*/
+

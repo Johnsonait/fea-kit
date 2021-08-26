@@ -55,6 +55,11 @@ const double& Element::GetJacobianDet()
 	return jacobian_det;
 }
 
+const std::vector<std::vector<uint32_t>>& Element::GetBounds()
+{
+	return bounds;
+}
+
 //Mutators
 void Element::AddNode(const std::vector<double>& n)
 {
