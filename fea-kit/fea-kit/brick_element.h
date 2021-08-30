@@ -11,10 +11,8 @@ class BrickElement :
 {
 private:
 	std::vector<std::vector<double>> jacobian; //Store the 3x3 jacobian matrix
-	double jacobian_det; //Store element jacobian value (can potentially change in space)
-	//Function that uses jacobian to find global derivatives of shape function 
-	//for constructing B matrix
-	double JacobianDet() override;
+
+	std::vector<std::vector<double>>& Jacobian(const double&, const double&, const double&) override;
 
 public:
 	//Constructors
@@ -27,9 +25,9 @@ public:
 	//Simple for tets but added for potentential future uses
 	double ShapeFunction(const double&, const double&, const  double&, const uint32_t&) override;
 	double ShapeFunctionDerivatives(const double&, const double&, const  double&, const uint32_t&, const uint32_t&) override;
-	void CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const double& mu, const size_t& node_num) override;
+	void CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const double& mu) override;
 
-	const double& GetJacobianDet(double, double, double) override;
+	const std::vector<std::vector<double>>& GetJacobian(const double& xsi, const double& eta, const double& zeta) override;
 	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>, LinearElasticSolids*) override;
 };
 

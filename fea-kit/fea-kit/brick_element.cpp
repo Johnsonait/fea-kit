@@ -14,6 +14,17 @@ static const std::vector<std::vector<double>> BRICK_QUADRATURE_WEIGHTS = {
 	{-0.3399810435848563,0.3399810435848563,-0.8611363115940526,0.8611363115940526},
 };
 
+static const std::vector<std::vector<double>> BRICK_COEFFS = {
+	{-1,-1,-1},
+	{1,-1,-1},
+	{1,1,-1},
+	{-1,1,-1},
+	{-1,-1,1},
+	{1,-1,1},
+	{1,1,1},
+	{-1,1,1}
+};
+
 BrickElement::BrickElement() = default;
 
 BrickElement::BrickElement(const std::vector<std::vector<double>>& body_nodes, std::vector<uint32_t>& nodal_ids)
@@ -31,57 +42,76 @@ BrickElement::BrickElement(const std::vector<std::vector<double>>& body_nodes, s
 		{nodal_ids[1],nodal_ids[2],nodal_ids[3]}
 	};
 	bounds = temp_bounds;
-
-	jacobian_det = JacobianDet();
 }
 
 BrickElement::~BrickElement() {}
 
-const double& BrickElement::GetJacobianDet(double, double, double)
+
+//Returns 3x3 jacobian matrix at a given (local) points
+std::vector<std::vector<double>>& BrickElement::Jacobian(const double& xsi, const double& eta, const double& zeta)
 {
-	return jacobian_det;
+	std::vector<std::vector<double>> ret;
+	//Each row in jacobian is const x,y,or z
+	for (size_t row = 0; row < nodes[0].size(); ++row)
+	{
+		ret.push_back({});
+		//Each col in jacobian differentiates xsi, eta, or zeta
+		for (size_t col = 0; col < nodes[0].size(); ++col)
+		{
+			double sum = 0;
+			for (size_t a = 0; a < global_nodes.size(); ++a)
+			{
+				sum += ShapeFunctionDerivatives(xsi,eta,zeta,a,col+1) * nodes[a][row];
+			}
+			ret[row].push_back(sum);
+		}
+	}
+	return ret;
 }
-double BrickElement::ShapeFunction(const double& zeta, const double& eta, const double& mu, const uint32_t& m)
+
+double BrickElement::ShapeFunction(const double& xsi, const double& eta, const double& zeta, const uint32_t& m)
 {
-	TODO;
+	return ((1+BRICK_COEFFS[m][0]*xsi)*(1+BRICK_COEFFS[m][1]*eta)*(1+BRICK_COEFFS[m][2]*zeta)) / 8;
 }
 //Returns local shape function value at a point for a node m in a given direction
-double BrickElement::ShapeFunctionDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m, const uint32_t& direction)
+double BrickElement::ShapeFunctionDerivatives(const double& xsi, const double& eta, const  double& zeta, const uint32_t& m, const uint32_t& direction)
 {
-	TODO;
+	switch (direction)
+	{
+	case 1:
+		return (BRICK_COEFFS[m][0]) * (1 + BRICK_COEFFS[m][1] * eta) * (1 + BRICK_COEFFS[m][2] * zeta) / 8;
+	case 2:
+		return (BRICK_COEFFS[m][1]) * (1 + BRICK_COEFFS[m][0] * xsi) * (1 + BRICK_COEFFS[m][2] * zeta) / 8;
+	case 3:
+		return (BRICK_COEFFS[m][2]) * (1 + BRICK_COEFFS[m][0] * xsi) * (1 + BRICK_COEFFS[m][1] * eta) / 8;
+	default:
+		break;
+	}
 }
 
 //This updates the global_shape_derivatives with the values at a given (local coord) point
-void BrickElement::CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const double& mu, const size_t& node_num)
+void BrickElement::CalcGlobalShapeDerivatives(const double& xsi, const double& eta, const double& zeta)
 {
-	//Each row of global_shape_derivatives has 3 values: dN/dx dN/dy dN/dz
-	for (size_t m = 0; m < nodes.size(); m++)
+	std::vector<std::vector<double>> J = GetJacobian(xsi,eta,zeta);
+	//Store jacobian cofactor matrix
+	double cof[3][3] = {
+		{(J[1][1] * J[2][2]) - (J[1][2] * J[2][1]),(J[1][2] * J[2][0]) - (J[1][0] * J[2][2]),(J[1][0] * J[2][1]) - (J[1][1] * J[2][0])},
+		{(J[2][1] * J[0][2]) - (J[2][2] * J[0][1]),(J[2][2] * J[0][0]) - (J[2][0] * J[0][2]),(J[2][0] * J[0][1]) - (J[2][1] * J[0][0])},
+		{(J[0][1] * J[1][2]) - (J[0][2] * J[1][1]),(J[0][2] * J[1][0]) - (J[0][0] * J[1][2]),(J[0][0] * J[1][1]) - (J[0][1] * J[1][0])}
+	};
+	double j_det = (J[0][0] * cof[0][0]) + (J[0][1] * cof[0][1]) + (J[0][2] * cof[0][2]);
+	for (size_t a = 0; a < global_nodes.size(); a++)
 	{
-		std::vector<std::vector<double>> mat = { {},{},{} }; //Matrix for jacobian system solution
-		std::vector<std::vector<double>> b = { {} };//Vector "solution" for jacobian system 
-
-		// For all coordinates associated with nodes (3)
-		// Seems iffy, double check this
-		for (int i = 0; i < nodes[0].size(); i++) //Rows of jacobian matrix 
-		{
-			//Update b vector with chosen node shape derivatives
-			b[0].push_back(ShapeFunctionDerivatives(0, 0, 0, m, i));
-
-			for (int j = 0; j < nodes[0].size(); j++) //Columns of jacobian matrix
-			{
-				double sum = 0;
-				for (int n = 0; n < nodes.size(); n++) //Number of nodes (x = x1*N1 + ... +xn*Nn)
-				{
-					sum += nodes[n][i] * ShapeFunctionDerivatives(0, 0, 0, n, j);
-				}
-				mat[i].push_back(sum);
-			}
-		}
-		LinearSystem temp_system(mat, b);
-		//Update globe_shape_derivatives with solution jacobian equation
-		//Can create B matrix after getting global shape derivatives
-		temp_system.Solve(global_shape_derivatives[m]); //Update global shape derivates
+		global_shape_derivatives[a][0] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[0][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[0][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[0][2])) / j_det;
+		global_shape_derivatives[a][1] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[1][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[1][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[1][2])) / j_det;
+		global_shape_derivatives[a][2] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[2][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[2][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[2][2])) / j_det;
 	}
+}
+
+const std::vector<std::vector<double>>& BrickElement::GetJacobian(const double& xsi, const double& eta, const double& zeta)
+{
+	jacobian = Jacobian(xsi,eta,zeta);
+	return jacobian;
 }
 
 Matrix& BrickElement::Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>el_ptr, LinearElasticSolids* model)

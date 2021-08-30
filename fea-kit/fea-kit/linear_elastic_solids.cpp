@@ -1,21 +1,5 @@
 #include "linear_elastic_solids.h"
 
-/*
-* Quadrature points for quad-type domains
-static const std::vector<std::vector<double>> QUADRATURE_POINTS = {
-   {0},
-   {-0.5773502691896257,0.5773502691896257},
-   {0,-0.7745966692414834,0.7745966692414834},
-   {0.6521451548625461,0.6521451548625461,0.3478548451374538,0.3478548451374538},
-};
-* Quadrature weights for quad-type domains
-static const std::vector<std::vector<double>> QUADRATURE_WEIGHTS = {
-	{2},
-	{1,1},
-	{0.8888888888888888,0.5555555555555556,0.5555555555555556},
-	{-0.3399810435848563,0.3399810435848563,-0.8611363115940526,0.8611363115940526},
-};
-*/
 
 static const double GRAVITY = 9.81;
 
@@ -84,10 +68,10 @@ void LinearElasticSolids::InitMatrices(std::shared_ptr<std::vector<std::vector<d
 
 //Constructs 6x12 elemental B matrix
 //Requires global shape function derivatives
-Matrix LinearElasticSolids::ConstructBMatrix(const double& zeta,const double& eta, const double& mu, std::shared_ptr<Element> el)
+Matrix LinearElasticSolids::ConstructBMatrix(const double& xsi,const double& eta, const double& zeta, std::shared_ptr<Element> el)
 {
 	std::vector<std::vector<double>> nodes = el->GetNodes();
-	el->CalcGlobalShapeDerivatives(zeta, eta, mu, nodes.size());
+	el->CalcGlobalShapeDerivatives(xsi, eta, zeta);
 	std::vector<std::vector<double>> G = el->GetGlobalShapeDerivatives();
 
 	std::vector<std::vector<double>> Mat; //Temporary matrix to be returned as matrix
@@ -121,7 +105,7 @@ Matrix LinearElasticSolids::ConstructBMatrix(const double& zeta,const double& et
 Matrix LinearElasticSolids::ConstructShapeMatrix(const double& zeta, const double& eta, const double& mu, std::shared_ptr<Element> el)
 {
 	std::vector<std::vector<double>> nodes = el->GetNodes();
-	el->CalcGlobalShapeDerivatives(zeta, eta, mu, nodes.size());
+	el->CalcGlobalShapeDerivatives(zeta, eta, mu);
 	std::vector<std::vector<double>> G = el->GetGlobalShapeDerivatives();
 
 	std::vector<std::vector<double>> Mat; //Temporary matrix to be returned as matrix
@@ -267,6 +251,33 @@ Body& LinearElasticSolids::GetBody()
 	return *body_ptr;
 }
 
+void LinearElasticSolids::EnforceDisplacements(std::shared_ptr<std::vector<std::vector<double>>> k, std::shared_ptr<std::vector<std::vector<double>>> f)
+{
+	for (size_t boundary = 0; boundary < body_ptr->GetBoundaryCount(); ++boundary)
+	{
+		std::string type = "";
+		std::vector<uint32_t> boundary_nodes = {};
+		std::vector<double> boundary_vector = {};
+		body_ptr->GetBoundaryInfo(boundary_nodes, type, boundary_vector, boundary);
+		if (type == "*DISPLACEMENT")
+		{
+			for (uint32_t node : boundary_nodes)
+			{
+				//Clear the given node's row and set the node stiffness to 1
+				for (uint32_t col = 0; col < (*k)[node-1].size(); ++col)
+				{
+					(*k)[node - 1][col] = 0;
+				}
+				(*k)[node-1][node-1] = 1;
+				//Set the Fx, Fy, Fz values to the given displacement so they show up in the solution
+				for (size_t n = 0; n<3;++n)
+				{
+					(*f)[node - 1 + n][0] = boundary_vector[n];
+				}
+			}
+		}
+	}
+}
 //This is where the overall problem is solved
 //Each element in the problem is used to first construct the element-wise stiffness matrix which is then assembled into the global stiffness matrix
 //The global problem is then solved and the results stored (the result being the displacement values at each node)
@@ -307,7 +318,7 @@ void LinearElasticSolids::Solve()
 		AssembleStiffness(local_k,*e);
 		AssembleForce(local_f,*e);
 	}
-	EnforceDisplacements(global_k);
+	EnforceDisplacements(global_k,global_f);
 	//Prepare to solve the whole system
 	LinearSystem system(global_k,global_f);
 	//Update the  global solution vector using global force and stiffness matrices
@@ -318,24 +329,3 @@ Matrix& LinearElasticSolids::GetElasticMatrix()
 {
 	return this->elastic_matrix;
 }
-/*
-Matrix& LinearElasticSolids::Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
-{
-	int index = points - 1;
-	//Construct result matrix of the appropriate size
-	Matrix result(mat.CountRows(), mat.CountCols());
-	for (int i = 0; i < points; i++)
-	{
-		for (int j = 0; j < points; j++)
-		{
-			for (int k = 0; k < points; k++)
-			{
-				result = result + (func(QUADRATURE_POINTS[index][i], QUADRATURE_POINTS[index][j], QUADRATURE_POINTS[index][k], el_ptr, model)
-					* (QUADRATURE_WEIGHTS[index][i] * QUADRATURE_WEIGHTS[index][j] * QUADRATURE_WEIGHTS[index][k]));
-			}
-		}
-	}
-	return result;
-}
-*/
-

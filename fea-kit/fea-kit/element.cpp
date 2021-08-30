@@ -10,9 +10,16 @@ Element::Element(const std::vector<double>&n, const std::vector<uint32_t>& el) :
 }
 
 //Useful
-double Element::ShapeFunction(const double& zeta,const double& eta,const  double& mu, const uint32_t& m)
+double Element::ShapeFunction(const double& xsi,const double& eta,const  double& zeta, const uint32_t& m)
 {
 	return 0;
+}
+
+std::vector<std::vector<double>>& Element::Jacobian(const double& xsi, const double& eta, const double& zeta)
+{
+	std::vector<std::vector<double>> ret = {};
+	return ret;
+
 }
 
 double Element::JacobianDet()
@@ -20,17 +27,13 @@ double Element::JacobianDet()
 	return 0;
 }
 
-const double& Element::GetJacobianDet(double, double, double)
-{
-	return 0;
-}
 
 double Element::ShapeFunctionDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m, const uint32_t& direction)
 {
 	return 0;
 }
 
-void Element::CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const  double& mu, const uint32_t& m)
+void Element::CalcGlobalShapeDerivatives(const double& xsi, const double& eta, const  double& zeta)
 {
 	return;
 }
