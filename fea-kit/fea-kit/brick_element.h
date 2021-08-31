@@ -28,6 +28,9 @@ public:
 	void CalcGlobalShapeDerivatives(const double& zeta, const double& eta, const double& mu) override;
 
 	const std::vector<std::vector<double>>& GetJacobian(const double& xsi, const double& eta, const double& zeta) override;
-	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>, LinearElasticSolids*) override;
+
+	//const double& GetJacobianDet() override;
+
+	const double& GetJacobianDet(const double& xsi, const double& eta, const double& zeta) override;
 };
 

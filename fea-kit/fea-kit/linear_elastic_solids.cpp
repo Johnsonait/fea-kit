@@ -1,35 +1,53 @@
 #include "linear_elastic_solids.h"
 
+static const std::vector<std::vector<double>> BRICK_QUADRATURE_POINTS = {
+   {0},
+   {-0.5773502691896257,0.5773502691896257},
+   {0,-0.7745966692414834,0.7745966692414834},
+   {0.6521451548625461,0.6521451548625461,0.3478548451374538,0.3478548451374538},
+};
 
-static const double GRAVITY = 9.81;
+static const std::vector<std::vector<double>> BRICK_QUADRATURE_WEIGHTS = {
+	{2},
+	{1,1},
+	{0.8888888888888888,0.5555555555555556,0.5555555555555556},
+	{-0.3399810435848563,0.3399810435848563,-0.8611363115940526,0.8611363115940526},
+};
 
-Matrix& StiffnessIntegrand(double eta, double zeta, double mu, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+static const double GRAVITY = -9.81;
+
+Matrix& StiffnessIntegrand(double xsi, double eta, double zeta, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
 {
-	const Matrix B = model->ConstructBMatrix(eta, zeta, mu, el_ptr);
+	const Matrix B = model->ConstructBMatrix(xsi, eta, zeta, el_ptr);
 	const Matrix B_T = B.GetTranspose();
 	const Matrix C = model->GetElasticMatrix();
 
 	//Final integrand value
-	Matrix ret = B_T * C * B * el_ptr->GetJacobianDet();
+	Matrix ret = B_T * C * B * el_ptr->GetJacobianDet(xsi,eta,zeta);
 	return ret;
 }
 
 //Finite element form of integrand used for updating local force vector to include body forces
-Matrix& BodyForceIntegrand(double eta, double zeta, double mu, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+Matrix& BodyForceIntegrand(double xsi, double eta, double zeta, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
 {
-	Matrix N = model->ConstructShapeMatrix(eta,zeta,mu,el_ptr);
-	std::vector<std::vector<double>> temp = { {0,0,-GRAVITY} };
+	Matrix N = model->ConstructShapeMatrix(xsi,eta,zeta,el_ptr);
+	std::vector<std::vector<double>> temp = { {0},{0},{GRAVITY} };
 	Matrix body_force(temp);
 
-	Matrix ret = (N*body_force)*el_ptr->GetJacobianDet();
+	Matrix ret = (N*body_force)*el_ptr->GetJacobianDet(xsi,eta,zeta);
 	return ret;
 }
 
-Matrix& SurfaceForceIntegrand(double eta, double zeta, double mu, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+Matrix& SurfaceForceIntegrand(double xsi, double eta, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model,std::vector<std::vector<double>> traction)
 {
 
-	Matrix N = model->ConstructShapeMatrix(eta, zeta, mu, el_ptr);
+	Matrix N = model->ConstructShapeMatrix(xsi, eta,0, el_ptr);
+	const std::vector<std::vector<double>> J = el_ptr->GetJacobian(xsi, eta, 0);
+
+	Matrix tract(traction);
 	
+	Matrix ret = N * (tract.Transpose()) * std::sqrt((std::pow(((J[1][0] * J[2][1]) - (J[1][1] * J[2][0])), 2)) + (std::pow(((J[0][0] * J[2][1]) - (J[0][1] * J[2][0])), 2)) + (std::pow(((J[0][0] * J[1][1]) - (J[0][1] * J[1][0])), 2)));
+	return ret;
 }
 
 
@@ -129,7 +147,7 @@ Matrix LinearElasticSolids::ConstructShapeMatrix(const double& zeta, const doubl
 //This function is used to update the provided local_k matrix using quadrature 
 void LinearElasticSolids::CalculateLocalK(Matrix& local_k, std::shared_ptr<Element> el_ptr)
 {
-	local_k = el_ptr->Integrate(2, StiffnessIntegrand, local_k ,el_ptr, this);
+	local_k = Integrate(2, StiffnessIntegrand,local_k,el_ptr,this);
 }
 
 //This function updates the global stiffness matrix from the element stiffness matrix
@@ -143,8 +161,15 @@ void LinearElasticSolids::AssembleStiffness(Matrix& local_k,const std::vector<ui
 		}
 	}
 }
+void LinearElasticSolids::AssembleForce(Matrix& local_f, const std::vector<uint32_t>& node_ids)
+{
+	for (size_t i = 0; i < local_f.CountRows(); ++i)
+	{
+		(*global_f)[node_ids[i] - 1][0] += local_f[i][0];
+	}
+}
 
-void LinearElasticSolids::EnforceSurfaceBounds(Matrix& local_k, Matrix& local_f, std::shared_ptr<Element> el_ptr)
+void LinearElasticSolids::EnforceSurfaceBounds(Matrix& local_k, std::shared_ptr<Element> el_ptr)
 {
 	for (size_t boundary = 0; boundary<body_ptr->GetBoundaryCount(); ++boundary)
 	{
@@ -190,30 +215,53 @@ void LinearElasticSolids::EnforceSurfaceBounds(Matrix& local_k, Matrix& local_f,
 			//Now we have the bounds of the element that are affected by the traction vector 
 			//(Which is stored in boundary_vector)
 			//The next step is to integrate the bounds surfaces in affected_bound with the vector and shape matrices, then update the local_f
-			//For now we will just use the bound area to find the total force and average that across the bound nodes
+			//For now forces will be calculated assuming the traction is constant across the surface and averaging the force across all nodes
+			for (auto bound : affected_bound)
+			{
+				//Bound stores id's of nodes in the associated bound. Can use ids to get node coordinates. Can use node coordinates (and cross product) to estimate area of surface
+				//Area of surface can then be multiplied by traction value to get average force Fx, Fy, Fz. Number of nodes in bound can be used to find average force for each node
+				//Average force is then added to appropriate local_f
 
+				std::vector<double> node1 = (body_ptr->GetNodes())[bound[0]-1];
+				std::vector<double> node2 = (body_ptr->GetNodes())[bound[1]-1];
+				std::vector<double> node3 = (body_ptr->GetNodes())[bound[2]-1];
+				std::vector<double> node4 = (body_ptr->GetNodes())[bound[3]-1];
+
+				uint32_t x = 0, y = 1, z = 2;
+
+				double A1 = 0.5 * std::sqrt((pow((((node2[y] - node1[y]) * (node4[z] - node1[z])) - ((node4[y] - node1[y]) * (node2[z] - node1[z]))), 2)) + (pow((((node2[x] - node1[x]) * (node4[z] - node1[z])) - ((node4[x] - node1[x]) * (node2[z] - node1[z]))), 2)) + (pow((((node2[x] - node1[x]) * (node4[y] - node1[y])) - ((node4[x] - node1[x]) * (node2[y] - node1[y]))), 2)));
+				double A2 = 0.5 * std::sqrt((pow((((node4[y] - node3[y]) * (node2[z] - node3[z])) - ((node2[y] - node3[y]) * (node4[z] - node3[z]))), 2)) + (pow((((node4[x] - node3[x]) * (node2[z] - node3[z])) - ((node2[x] - node3[x]) * (node4[z] - node3[z]))), 2)) + (pow((((node4[x] - node3[x]) * (node2[y] - node3[y])) - ((node2[x] - node3[x]) * (node4[y] - node3[y]))), 2)));
+				
+				for (auto node : bound)
+				{
+					for (size_t n = 0; n < boundary_vector.size(); ++n)
+					{
+						(*global_f)[node - 1 + n][0] += boundary_vector[n] * (A1 + A2);
+					}
+				}
+			}
 		}
 	}
 }
 
 //This function is used to update the provided local_f matrix using quadrature 
 //It needs to consider the volume integral over the body and the surface integral over the tractioned surfaces
-void LinearElasticSolids::CalculateLocalForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
+void LinearElasticSolids::CalculateLocalForce(Matrix& local_f, std::shared_ptr<Element> el_ptr,std::vector<std::vector<double>>& traction)
 {
-	CalculateBodyForce(local_f, el_ptr);
-	CalculateSurfaceForce(local_f, el_ptr);
+	CalculateBodyForce(local_f, el_ptr,this);
+	CalculateSurfaceForce(local_f, el_ptr,this,traction);
 }
 
 //Integrate the body-force values to be used in global force-vector
-void LinearElasticSolids::CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
+void LinearElasticSolids::CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr,LinearElasticSolids* model)
 {
-	local_f = local_f + el_ptr->Integrate(2, BodyForceIntegrand, local_f, el_ptr, this);
+	local_f = local_f + Integrate(2, BodyForceIntegrand,local_f, el_ptr,model);
 }
 
 //Integrate the surface tractions to be used in global force-vector
-void LinearElasticSolids::CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr)
+void LinearElasticSolids::CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr,LinearElasticSolids* model,std::vector<std::vector<double>>& traction)
 {
-	local_f = local_f + el_ptr->Integrate(2,SurfaceForceIntegrand, local_f,el_ptr, this);
+	local_f = local_f + IntegrateSurf(2,SurfaceForceIntegrand,local_f, el_ptr,model,traction);
 }
 
 LinearElasticSolids::LinearElasticSolids()//Default constructors
@@ -251,8 +299,10 @@ Body& LinearElasticSolids::GetBody()
 	return *body_ptr;
 }
 
+//Changes global stiffness matrix entries and force vector
 void LinearElasticSolids::EnforceDisplacements(std::shared_ptr<std::vector<std::vector<double>>> k, std::shared_ptr<std::vector<std::vector<double>>> f)
 {
+	//Go through all boundaries associated with body and apply displacements if there are any
 	for (size_t boundary = 0; boundary < body_ptr->GetBoundaryCount(); ++boundary)
 	{
 		std::string type = "";
@@ -263,15 +313,15 @@ void LinearElasticSolids::EnforceDisplacements(std::shared_ptr<std::vector<std::
 		{
 			for (uint32_t node : boundary_nodes)
 			{
-				//Clear the given node's row and set the node stiffness to 1
-				for (uint32_t col = 0; col < (*k)[node-1].size(); ++col)
+				//3 dof, need to add n to entries to update all dof of stiffness and force matrices
+				for (size_t n = 0; n < 3;++n)
 				{
-					(*k)[node - 1][col] = 0;
-				}
-				(*k)[node-1][node-1] = 1;
-				//Set the Fx, Fy, Fz values to the given displacement so they show up in the solution
-				for (size_t n = 0; n<3;++n)
-				{
+					//Clear the given node's row and set the node stiffness to 1
+					for (uint32_t col = 0; col < (*k)[node - 1].size(); ++col)
+					{
+						(*k)[node - 1+n][col] = 0;
+					}
+					(*k)[node - 1 + n][node - 1] = 1;
 					(*f)[node - 1 + n][0] = boundary_vector[n];
 				}
 			}
@@ -294,24 +344,13 @@ void LinearElasticSolids::Solve()
 
 		std::vector<uint32_t> local_elems = *e; //Store the set of element id's
 		
-		//Four nodes means a linear tetrahedral element (3D elements)
-		if (e->size() == 4)
-		{
-			//Create a heap-allocated tetrahedral element & pointer to it which will be passed to 
-			std::shared_ptr<TetrahedralElement> tet_ptr = std::make_shared<TetrahedralElement>(nodes, local_elems);
-
-			//Update local stiffness and force vectors based on element and model information
-			CalculateLocalK(local_k,tet_ptr);
-			EnforceSurfaceBounds(local_k,local_f,tet_ptr);
-			//CalculateLocalForce(local_f,tet_ptr);
-		}
 		if (e->size() == 8)
 		{
 			//Create a heap-allocated brick element & pointer to be passed to the calulation functions
 			std::shared_ptr<BrickElement> brick_ptr = std::make_shared<BrickElement>(nodes,local_elems);
 
 			CalculateLocalK(local_k, brick_ptr);
-			EnforceSurfaceBounds(local_k, local_f, brick_ptr);
+			EnforceSurfaceBounds(local_k, brick_ptr);
 		}
 
 		//Insert element stiffness and force into global system
@@ -328,4 +367,41 @@ void LinearElasticSolids::Solve()
 Matrix& LinearElasticSolids::GetElasticMatrix()
 {
 	return this->elastic_matrix;
+}
+
+//3D integrals
+Matrix& LinearElasticSolids::Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>,LinearElasticSolids*)> func, Matrix& mat, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+{
+	int index = points - 1;
+	//Construct result matrix of the appropriate size
+	Matrix result(mat.CountRows(), mat.CountCols());
+	for (int i = 0; i < points; i++)
+	{
+		for (int j = 0; j < points; j++)
+		{
+			for (int k = 0; k < points; k++)
+			{
+				result = result + (func(BRICK_QUADRATURE_POINTS[index][i], BRICK_QUADRATURE_POINTS[index][j], BRICK_QUADRATURE_POINTS[index][k], el_ptr,model)
+					* (BRICK_QUADRATURE_WEIGHTS[index][i] * BRICK_QUADRATURE_WEIGHTS[index][j] * BRICK_QUADRATURE_WEIGHTS[index][k]));
+			}
+		}
+	}
+	return result;
+}
+
+//2D integrals
+Matrix& LinearElasticSolids::IntegrateSurf(const int& points, std::function<Matrix& (double, double, std::shared_ptr<Element>,LinearElasticSolids*,std::vector<std::vector<double>>&)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids* model,std::vector<std::vector<double>>& traction)
+{
+	int index = points - 1;
+	//Construct result matrix of the appropriate size
+	Matrix result(mat.CountRows(), mat.CountCols());
+	for (int i = 0; i < points; i++)
+	{
+		for (int j = 0; j < points; j++)
+		{
+			result = result + (func(BRICK_QUADRATURE_POINTS[index][i], BRICK_QUADRATURE_POINTS[index][j],el_ptr,model,traction))
+				* (BRICK_QUADRATURE_WEIGHTS[index][i] * BRICK_QUADRATURE_WEIGHTS[index][j]);
+		}
+	}
+	return result;
 }

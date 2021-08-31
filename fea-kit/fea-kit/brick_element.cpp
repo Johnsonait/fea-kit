@@ -1,19 +1,5 @@
 #include "brick_element.h"
 
-static const std::vector<std::vector<double>> BRICK_QUADRATURE_POINTS = {
-   {0},
-   {-0.5773502691896257,0.5773502691896257},
-   {0,-0.7745966692414834,0.7745966692414834},
-   {0.6521451548625461,0.6521451548625461,0.3478548451374538,0.3478548451374538},
-};
-
-static const std::vector<std::vector<double>> BRICK_QUADRATURE_WEIGHTS = {
-	{2},
-	{1,1},
-	{0.8888888888888888,0.5555555555555556,0.5555555555555556},
-	{-0.3399810435848563,0.3399810435848563,-0.8611363115940526,0.8611363115940526},
-};
-
 static const std::vector<std::vector<double>> BRICK_COEFFS = {
 	{-1,-1,-1},
 	{1,-1,-1},
@@ -35,11 +21,15 @@ BrickElement::BrickElement(const std::vector<std::vector<double>>& body_nodes, s
 		nodes.push_back(body_nodes[nodal_ids[i]-1]);
 		global_shape_derivatives.push_back({});
 	}
+
+	//Store the global nodes that create the six surfaces of the brick
 	std::vector<std::vector<uint32_t>> temp_bounds = {
-		{nodal_ids[0],nodal_ids[1],nodal_ids[3]},
-		{nodal_ids[0],nodal_ids[1],nodal_ids[2]},
-		{nodal_ids[0],nodal_ids[2],nodal_ids[3] },
-		{nodal_ids[1],nodal_ids[2],nodal_ids[3]}
+		{nodal_ids[0],nodal_ids[1],nodal_ids[5],nodal_ids[4]},
+		{nodal_ids[1],nodal_ids[2],nodal_ids[6],nodal_ids[5]},
+		{nodal_ids[2],nodal_ids[3],nodal_ids[7],nodal_ids[6]},
+		{nodal_ids[3],nodal_ids[0],nodal_ids[4],nodal_ids[7]},
+		{nodal_ids[0],nodal_ids[3],nodal_ids[2],nodal_ids[1]},
+		{nodal_ids[4],nodal_ids[5],nodal_ids[6],nodal_ids[7]}
 	};
 	bounds = temp_bounds;
 }
@@ -99,12 +89,12 @@ void BrickElement::CalcGlobalShapeDerivatives(const double& xsi, const double& e
 		{(J[2][1] * J[0][2]) - (J[2][2] * J[0][1]),(J[2][2] * J[0][0]) - (J[2][0] * J[0][2]),(J[2][0] * J[0][1]) - (J[2][1] * J[0][0])},
 		{(J[0][1] * J[1][2]) - (J[0][2] * J[1][1]),(J[0][2] * J[1][0]) - (J[0][0] * J[1][2]),(J[0][0] * J[1][1]) - (J[0][1] * J[1][0])}
 	};
-	double j_det = (J[0][0] * cof[0][0]) + (J[0][1] * cof[0][1]) + (J[0][2] * cof[0][2]);
+	jacobian_det = (J[0][0] * cof[0][0]) + (J[0][1] * cof[0][1]) + (J[0][2] * cof[0][2]);
 	for (size_t a = 0; a < global_nodes.size(); a++)
 	{
-		global_shape_derivatives[a][0] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[0][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[0][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[0][2])) / j_det;
-		global_shape_derivatives[a][1] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[1][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[1][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[1][2])) / j_det;
-		global_shape_derivatives[a][2] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[2][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[2][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[2][2])) / j_det;
+		global_shape_derivatives[a][0] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[0][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[0][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[0][2])) / jacobian_det;
+		global_shape_derivatives[a][1] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[1][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[1][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[1][2])) / jacobian_det;
+		global_shape_derivatives[a][2] = ((ShapeFunctionDerivatives(xsi, eta, zeta, a, 1) * cof[2][0]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 2) * cof[2][1]) * (ShapeFunctionDerivatives(xsi, eta, zeta, a, 3) * cof[2][2])) / jacobian_det;
 	}
 }
 
@@ -114,21 +104,18 @@ const std::vector<std::vector<double>>& BrickElement::GetJacobian(const double& 
 	return jacobian;
 }
 
-Matrix& BrickElement::Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>el_ptr, LinearElasticSolids* model)
+const double& BrickElement::GetJacobianDet(const double& xsi, const double& eta, const double& zeta)
 {
-	int index = points - 1;
-	//Construct result matrix of the appropriate size
-	Matrix result(mat.CountRows(), mat.CountCols());
-	for (int i = 0; i < points; i++)
-	{
-		for (int j = 0; j < points; j++)
-		{
-			for (int k = 0; k < points; k++)
-			{
-				result = result + (func(BRICK_QUADRATURE_POINTS[index][i], BRICK_QUADRATURE_POINTS[index][j], BRICK_QUADRATURE_POINTS[index][k], el_ptr, model)
-					* (BRICK_QUADRATURE_WEIGHTS[index][i] * BRICK_QUADRATURE_WEIGHTS[index][j] * BRICK_QUADRATURE_WEIGHTS[index][k]));
-			}
-		}
-	}
-	return result;
+	std::vector<std::vector<double>> J = GetJacobian(xsi, eta, zeta);
+	//Store jacobian cofactor matrix
+	double cof[3][3] = {
+		{(J[1][1] * J[2][2]) - (J[1][2] * J[2][1]),(J[1][2] * J[2][0]) - (J[1][0] * J[2][2]),(J[1][0] * J[2][1]) - (J[1][1] * J[2][0])},
+		{(J[2][1] * J[0][2]) - (J[2][2] * J[0][1]),(J[2][2] * J[0][0]) - (J[2][0] * J[0][2]),(J[2][0] * J[0][1]) - (J[2][1] * J[0][0])},
+		{(J[0][1] * J[1][2]) - (J[0][2] * J[1][1]),(J[0][2] * J[1][0]) - (J[0][0] * J[1][2]),(J[0][0] * J[1][1]) - (J[0][1] * J[1][0])}
+	};
+
+	jacobian_det = (J[0][0] * cof[0][0]) + (J[0][1] * cof[0][1]) + (J[0][2] * cof[0][2]);
+
+	return jacobian_det;
 }
+

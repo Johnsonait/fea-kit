@@ -2,17 +2,16 @@
 #include <vector>
 #include <iostream>
 #include <memory>
+#include <math.h>
 #include <functional>
 
 #include "model.h"
 #include "matrix.h"
 #include "element.h"
-#include "tetrahedral_element.h"
 #include "brick_element.h"
 #include "body.h"
 #include "reader.h"
 //#include "quadrature.h"
-
 
 //Class to solve problems in linear elasticity 
 class LinearElasticSolids : public Model
@@ -33,17 +32,17 @@ private:
 	void InitMatrices(std::shared_ptr<std::vector<std::vector<double>>>,const uint32_t&,const uint32_t&);
 
 	void CalculateLocalK(Matrix&, std::shared_ptr<Element> );
-	void CalculateLocalForce(Matrix&,std::shared_ptr<Element>);
-	void CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr);
-	void CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr);
+	void CalculateLocalForce(Matrix&,std::shared_ptr<Element>,std::vector<std::vector<double>>&);
+	void CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr,LinearElasticSolids*);
+	void CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr,LinearElasticSolids*,std::vector<std::vector<double>>&);
 
 	void AssembleStiffness(Matrix&,const std::vector<uint32_t>&);
 	void AssembleForce(Matrix&, const std::vector<uint32_t>&);
-	void EnforceSurfaceBounds(Matrix& local_k,Matrix& local_f, std::shared_ptr<Element> el_ptr);
+	void EnforceSurfaceBounds(Matrix& local_k, std::shared_ptr<Element> el_ptr);
 	void EnforceDisplacements(std::shared_ptr<std::vector<std::vector<double>>> k, std::shared_ptr<std::vector<std::vector<double>>> f);
 
-	//Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>, LinearElasticSolids*)> func, const Matrix& mat, std::shared_ptr<Element>, LinearElasticSolids*);
-
+	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>,LinearElasticSolids*)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids*);
+	Matrix& IntegrateSurf(const int& points, std::function<Matrix& (double, double,std::shared_ptr<Element>, LinearElasticSolids*,std::vector<std::vector<double>>&)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids*,std::vector<std::vector<double>>&);
 
 public:
 	LinearElasticSolids();
@@ -51,8 +50,8 @@ public:
 	LinearElasticSolids(Reader& reader, Body& body);
 
 	void Solve(); 
-	Matrix ConstructBMatrix(const double&, const double&, const double&, std::shared_ptr<Element>);
-	Matrix ConstructShapeMatrix(const double& zeta, const double& eta, const double& mu, std::shared_ptr<Element> el);
+	static Matrix ConstructBMatrix(const double&, const double&, const double&, std::shared_ptr<Element>);
+	static Matrix ConstructShapeMatrix(const double& zeta, const double& eta, const double& mu, std::shared_ptr<Element> el);
 	Matrix& GetElasticMatrix();
 
 	Body& GetBody();

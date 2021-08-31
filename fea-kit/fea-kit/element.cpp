@@ -57,10 +57,19 @@ const double& Element::GetJacobianDet()
 {
 	return jacobian_det;
 }
-
+const double& Element::GetJacobianDet(const double& xsi, const double& eta, const double& zeta)
+{
+	return 0;
+}
 const std::vector<std::vector<uint32_t>>& Element::GetBounds()
 {
 	return bounds;
+}
+
+const std::vector<std::vector<double>>& Element::GetJacobian(const double& xsi, const double& eta, const double& zeta)
+{
+	std::vector<std::vector<double>> ret = {};
+	return ret;
 }
 
 //Mutators
