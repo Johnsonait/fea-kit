@@ -13,6 +13,7 @@ private:
     std::vector<std::vector<double>> b;
 
     double VectorNorm(std::vector<double>& x);
+    double VectorNorm(std::vector<std::vector<double>>& x);
 
     double Abs(const double& val);
 

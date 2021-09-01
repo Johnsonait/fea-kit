@@ -13,11 +13,13 @@ int Matrix::CountRows() const
 
 int Matrix::CountCols()
 {
-	return matrix[0].size();
+	if (matrix.size() != 0)
+		return matrix[0].size();
 }
 int Matrix::CountCols() const
 {
-	return matrix[0].size();
+	if (matrix.size() != 0)
+		return matrix[0].size();
 }
 
 //Constructors
@@ -114,7 +116,7 @@ Matrix Matrix::operator + (const Matrix& b)
 		for (size_t i = 0; i < matrix.size(); ++i) //For each row i
 		{
 			temp.push_back({});
-			for (size_t j = 0; j < matrix[0].size(); ++i) //For each column j
+			for (size_t j = 0; j < matrix[0].size(); ++j) //For each column j
 			{
 				temp[i].push_back(matrix[i][j]+b[i][j]);
 			}
@@ -178,7 +180,7 @@ Matrix& Matrix::Transpose()
 	return *this;
 }
 
-Matrix& Matrix::GetTranspose() const 
+Matrix Matrix::GetTranspose() const 
 {
 	std::vector<std::vector<double>> temp;
 	temp.resize(CountCols());
@@ -195,6 +197,18 @@ Matrix& Matrix::GetTranspose() const
 }
 
 void Matrix::PrintMatrix()
+{
+	std::cout << "\n";
+	for (int i = 0; i < matrix.size(); i++)
+	{
+		for (int j = 0; j < matrix[0].size(); j++)
+		{
+			std::cout << matrix[i][j] << " ";
+		}
+		std::cout << "\n";
+	}
+}
+void Matrix::PrintMatrix() const
 {
 	std::cout << "\n";
 	for (int i = 0; i < matrix.size(); i++)

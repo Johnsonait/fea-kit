@@ -8,4 +8,5 @@ void Program::Run()
 	Reader reader("model.txt",body);
 	LinearElasticSolids model(reader,body);
 	model.Solve();
+	
 }

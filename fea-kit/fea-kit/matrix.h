@@ -26,8 +26,9 @@ public:
 
 	//Useful
 	Matrix& Transpose();
-	Matrix& GetTranspose() const;
+	Matrix GetTranspose() const;
 	void PrintMatrix();
+	void PrintMatrix() const;
 	int CountRows();
 	int CountRows() const;
 

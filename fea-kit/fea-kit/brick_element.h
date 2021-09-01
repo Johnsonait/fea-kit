@@ -13,6 +13,7 @@ private:
 	std::vector<std::vector<double>> jacobian; //Store the 3x3 jacobian matrix
 
 	std::vector<std::vector<double>>& Jacobian(const double&, const double&, const double&) override;
+	void Jacobian(const double& xsi, const double& eta, const double& zeta, std::vector<std::vector<double>>& ret);
 
 public:
 	//Constructors

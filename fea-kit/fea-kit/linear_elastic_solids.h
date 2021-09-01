@@ -41,8 +41,10 @@ private:
 	void EnforceSurfaceBounds(Matrix& local_k, std::shared_ptr<Element> el_ptr);
 	void EnforceDisplacements(std::shared_ptr<std::vector<std::vector<double>>> k, std::shared_ptr<std::vector<std::vector<double>>> f);
 
-	Matrix& Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>,LinearElasticSolids*)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids*);
+	Matrix Integrate(const int& points, std::function<Matrix (double, double, double, std::shared_ptr<Element>,LinearElasticSolids*)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids*);
 	Matrix& IntegrateSurf(const int& points, std::function<Matrix& (double, double,std::shared_ptr<Element>, LinearElasticSolids*,std::vector<std::vector<double>>&)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids*,std::vector<std::vector<double>>&);
+
+	void Log(const std::string&);
 
 public:
 	LinearElasticSolids();

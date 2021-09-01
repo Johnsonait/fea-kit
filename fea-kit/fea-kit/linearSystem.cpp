@@ -1,5 +1,8 @@
 #include "linearsystem.h"
 
+static const int COUNTMAX = 10000;
+static const double MINRES = 5e-5;
+
 //Return length of vector, useful for calculating residuals
 double LinearSystem::VectorNorm(std::vector<double>& x) 
 {
@@ -7,6 +10,15 @@ double LinearSystem::VectorNorm(std::vector<double>& x)
     for (int i = 0; i < x.size(); i++)
     {
         sum += std::pow(x[i], 2);
+    }
+    return std::pow(sum, 0.5);
+}
+double LinearSystem::VectorNorm(std::vector<std::vector<double>>& x)
+{
+    double sum = 0;
+    for (int i = 0; i < x.size(); i++)
+    {
+        sum += std::pow(x[i][0], 2);
     }
     return std::pow(sum, 0.5);
 }
@@ -84,23 +96,27 @@ void LinearSystem::Solve(std::shared_ptr<std::vector<std::vector<double>>> x)
     double residual = 1.0;
     int count = 0;
 
-    while (residual > 0.000001 && count < 10000)
+    while (residual > MINRES && count < COUNTMAX)
     {
         double normStore = VectorNorm((*x)[0]);
-        for (int i = 0; i < b[0].size(); i++)
+        for (int i = 0; i < b.size(); i++)
         {
-            (*x)[0][i] = b[0][i];
-            for (int j = 0; j < b[0].size(); j++)
+            (*x)[i][0] = b[i][0];
+            for (int j = 0; j < b.size(); j++)
             {
                 if (i != j)
                 {
-                    (*x)[0][i] -= (*x)[0][j] * matrix[i][j];
+                    (*x)[i][0] -= (*x)[j][0] * matrix[i][j];
                 }
             }
-            (*x)[0][i] *= 1 / matrix[i][i];
+            (*x)[i][0] = (*x)[i][0] / matrix[i][i];
         }
-        residual = abs(normStore - VectorNorm((*x)[0]));
+        residual = abs(normStore - VectorNorm((*x)));
         count += 1;
+    }
+    if (count == COUNTMAX)
+    {
+        std::cout<< std::endl << "Max iterations reached, solution did not converge! Residual: "<< residual << std::endl;
     }
 }
 
