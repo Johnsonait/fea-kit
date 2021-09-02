@@ -489,6 +489,8 @@ void LinearElasticSolids::PostProcess()
 			body_ptr->AddTemperature(global_temp[i]);
 		}
 	}
+	Log("Data processing complete!");
+	
 }
 
 Matrix& LinearElasticSolids::GetElasticMatrix()
