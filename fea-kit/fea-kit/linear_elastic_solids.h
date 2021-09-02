@@ -45,6 +45,8 @@ private:
 	Matrix& IntegrateSurf(const int& points, std::function<Matrix& (double, double,std::shared_ptr<Element>, LinearElasticSolids*,std::vector<std::vector<double>>&)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids*,std::vector<std::vector<double>>&);
 
 	void Log(const std::string&);
+	double EquivalentStrain(const std::vector<double>& strain);
+	double EquivalentStress(const std::vector<double>& stress);
 
 public:
 	LinearElasticSolids();

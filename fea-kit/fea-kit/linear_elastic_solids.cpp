@@ -16,14 +16,14 @@ static const std::vector<std::vector<double>> BRICK_QUADRATURE_WEIGHTS = {
 
 static const double GRAVITY = -9.81;
 
-Matrix& StiffnessIntegrand(double xsi, double eta, double zeta, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+Matrix StiffnessIntegrand(double xsi, double eta, double zeta, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
 {
 	const Matrix B = model->ConstructBMatrix(xsi, eta, zeta, el_ptr);
 	const Matrix B_T = B.GetTranspose();
 	const Matrix C = model->GetElasticMatrix();
 
 	//Final integrand value
-	Matrix ret = B_T * C * B * el_ptr->GetJacobianDet(xsi,eta,zeta);
+	Matrix ret = (B_T * (C * B)) * el_ptr->GetJacobianDet(xsi,eta,zeta);
 	return ret;
 }
 
@@ -50,11 +50,23 @@ Matrix& SurfaceForceIntegrand(double xsi, double eta, std::shared_ptr<Element> e
 	return ret;
 }
 
+void LinearElasticSolids::Log(const std::string& str)
+{
+	std::cout << "\n" << str << std::endl;
+}
 
 void LinearElasticSolids::Lame() //Pronounced Lam-eh
 {
 	lambda = (E * poisson) / ((1 + poisson) * (1 - (2 * poisson)));
 	G = E / (2 * (1 + poisson));
+}
+double LinearElasticSolids::EquivalentStrain(const std::vector<double>& strain)
+{
+	return (2.0 / 3.0) * std::sqrt(((3.0 / 2.0) * (std::pow(strain[0], 2) + std::pow(strain[1], 2) + std::pow(strain[2], 2))) + ((3.0 / 4.0) * (std::pow(strain[3], 2) + std::pow(strain[4], 2) + std::pow(strain[5], 2))));
+}
+double LinearElasticSolids::EquivalentStress(const std::vector<double>& stress)
+{
+	return std::sqrt(0.5 * (std::pow((stress[0] - stress[1]), 2) + std::pow((stress[1] - stress[2]), 2), std::pow((stress[2] - stress[0]), 2) + (6 * (std::pow(stress[3], 2) + std::pow(stress[4], 2) + std::pow(stress[5], 2)))));
 }
 
 //Populates isotropic elasticity matrix with Lame parameters
@@ -153,19 +165,25 @@ void LinearElasticSolids::CalculateLocalK(Matrix& local_k, std::shared_ptr<Eleme
 //This function updates the global stiffness matrix from the element stiffness matrix
 void LinearElasticSolids::AssembleStiffness(Matrix& local_k,const std::vector<uint32_t>& node_ids)
 {
-	for (size_t i = 0; i < local_k.CountRows(); ++i)
+	for (size_t i = 0; i < node_ids.size(); ++i)
 	{
-		for (size_t j = 0; j < local_k.CountCols(); j++)
+		for (size_t j = 0; j < node_ids.size(); ++j)
 		{
-			(*global_k)[node_ids[i] - 1][node_ids[j] - 1] += local_k[i][j];
+			for (size_t n = 0; n < 3; ++n)
+			{
+				(*global_k)[(3*node_ids[i]-2) - 1+n][(3*node_ids[j]-2) - 1+n] += local_k[i+n][j+n];
+			}
 		}
 	}
 }
 void LinearElasticSolids::AssembleForce(Matrix& local_f, const std::vector<uint32_t>& node_ids)
 {
-	for (size_t i = 0; i < local_f.CountRows(); ++i)
+	for (size_t i = 0; i < node_ids.size(); ++i)
 	{
-		(*global_f)[node_ids[i] - 1][0] += local_f[i][0];
+		for (size_t n = 0; n < 3; ++n)
+		{
+			(*global_f)[node_ids[i] - 1 + n][0] += local_f[i + n][0];
+		}
 	}
 }
 
@@ -207,7 +225,7 @@ void LinearElasticSolids::EnforceSurfaceBounds(Matrix& local_k, std::shared_ptr<
 						is_in = false;
 					}
 				}
-				if (!is_in)
+				if (is_in)
 				{
 					affected_bound.push_back(bound);
 				}
@@ -236,7 +254,7 @@ void LinearElasticSolids::EnforceSurfaceBounds(Matrix& local_k, std::shared_ptr<
 				{
 					for (size_t n = 0; n < boundary_vector.size(); ++n)
 					{
-						(*global_f)[node - 1 + n][0] += boundary_vector[n] * (A1 + A2);
+						(*global_f)[(3*node-2) - 1 + n][0] += boundary_vector[n] * (A1 + A2)/ bound.size();
 					}
 				}
 			}
@@ -319,10 +337,10 @@ void LinearElasticSolids::EnforceDisplacements(std::shared_ptr<std::vector<std::
 					//Clear the given node's row and set the node stiffness to 1
 					for (uint32_t col = 0; col < (*k)[node - 1].size(); ++col)
 					{
-						(*k)[node - 1+n][col] = 0;
+						(*k)[(3*node-2) - 1+n][col] = 0;
 					}
-					(*k)[node - 1 + n][node - 1] = 1;
-					(*f)[node - 1 + n][0] = boundary_vector[n];
+					(*k)[(3*node-2) - 1 + n][(3*node-2) - 1+n] = 1;
+					(*f)[(3*node-2) - 1 + n][0] = boundary_vector[n];
 				}
 			}
 		}
@@ -352,16 +370,125 @@ void LinearElasticSolids::Solve()
 			CalculateLocalK(local_k, brick_ptr);
 			EnforceSurfaceBounds(local_k, brick_ptr);
 		}
-
 		//Insert element stiffness and force into global system
 		AssembleStiffness(local_k,*e);
 		AssembleForce(local_f,*e);
 	}
+	Log("Enforcing displacement conditions");
 	EnforceDisplacements(global_k,global_f);
 	//Prepare to solve the whole system
 	LinearSystem system(global_k,global_f);
 	//Update the  global solution vector using global force and stiffness matrices
+	Log("Starting system solution...");
 	system.Solve(global_sol);
+	Log("System solution complete!");
+	/*
+	for (size_t i = 0; i < global_k->size(); i++)
+	{
+		for (size_t j = 0; j < global_k->size(); j++)
+		{
+			std::cout << (*global_k)[i][j] << " ";
+		}
+		std::cout << std::endl;
+	}
+	*/
+	for (size_t i = 0; i < global_f->size(); i++)
+	{
+		std::cout << (*global_sol)[i][0] << std::endl;
+	}
+	//Solution finished! Time to post-process
+}
+
+//method generates stress and strain data from global_sol and put data into body_ptr to be writen to results file
+void LinearElasticSolids::PostProcess()
+{
+	Log("Starting post-processing...");
+	//Starting out, we have the displacements U V W stored for each node in the global_sol pointer, lets add them to the body_ptr via AddDisplacement
+	for (size_t node = 0; node < global_sol->size(); node+=3)
+	{
+		std::vector<double> temp;
+		for (size_t n = 0; n < 3; n++)
+		{
+			temp.push_back((*global_sol)[node+n][0]);
+		}
+		body_ptr->AddDisplacement(temp);
+	}
+	//Strains can be computed using the B matrix approach (e = B*u)
+	//The body_ptr contains the strains vector we want to update, we can go through each element (like we do in Solve()) and additively construct the strains from it
+	//Get references to the body nodes and elements for convienence
+	const std::vector<std::vector<double>>& nodes = body_ptr->GetNodes();
+	const std::vector<std::vector<uint32_t>>& elems = body_ptr->GetElements();
+	const std::vector<std::vector<double>> BRICK_POINTS = {
+		{0,0,0},
+		{1,0,0},
+		{1,1,0},
+		{0,1,0},
+		{0,0,1},
+		{1,0,1},
+		{1,1,1},
+		{0,1,1}
+	};
+
+	std::vector<std::vector<double>> global_strain;
+	std::vector<std::vector<double>> global_stress;
+	std::vector<double> global_temp;
+
+	for (size_t n = 0; n < body_ptr->GetNodeNum(); n++)
+	{
+		std::vector<double> temp(6,0);
+		global_strain.push_back(temp);
+		global_stress.push_back(temp);
+		global_temp.push_back(0);
+	}
+
+	for (auto e = elems.begin(); e != elems.end(); ++e)
+	{
+		std::vector<uint32_t> local_elems = *e; //Store the set of element id's
+		if (e->size() == 8)
+		{
+			//Create a heap-allocated brick element & pointer to be passed to the calulation functions
+			std::shared_ptr<BrickElement> brick_ptr = std::make_shared<BrickElement>(nodes, local_elems);
+			//Go through each node of the element and calculate the strain at that node via B*u
+			//Remember we need to extract the proper "local" u from the global solution vector
+			std::vector<std::vector<double>> temp_u;
+			for (size_t n = 0; n < local_elems.size(); n++)
+			{
+				for (size_t i = 0; i < 3; ++i)
+				{
+					temp_u.push_back({});
+					double val = (*global_sol)[local_elems[n]-1+i][0];
+					temp_u[3*n + i].push_back(val);
+				}
+			}
+			Matrix local_u(temp_u);
+
+			for (size_t n = 0; n < BRICK_POINTS.size(); ++n)
+			{
+				double xsi = BRICK_POINTS[n][0], eta = BRICK_POINTS[n][1], zeta = BRICK_POINTS[n][2];
+				Matrix B = ConstructBMatrix(xsi,eta,zeta, brick_ptr);
+				Matrix strain_mat = B * local_u;
+				Matrix stress_mat = elastic_matrix * strain_mat;
+				//We now have the proper values of strain and stress in strain_mat and stress_mat at the node n
+				//Time to add it to the global stress vector!
+				for (size_t i = 0; i < strain_mat.CountCols(); ++i)
+				{
+					global_strain[local_elems[n] - 1][i] += strain_mat[i][0];
+					global_stress[local_elems[n] - 1][i] += stress_mat[i][0];
+				}
+			}
+
+		}
+		//end of if for element types
+		//Now add the calculated results to the body_ptr
+		for (size_t i = 0; i < body_ptr->GetNodeNum(); i++)
+		{
+			body_ptr->AddStrain(global_strain[i]);
+			body_ptr->AddStress(global_stress[i]);
+			body_ptr->AddEquivalentStrain(EquivalentStrain(global_strain[i]));
+			body_ptr->AddEquivalentStress(EquivalentStress(global_stress[i]));
+			body_ptr->AddTemperature(global_temp[i]);
+		}
+	}
 }
 
 Matrix& LinearElasticSolids::GetElasticMatrix()
@@ -370,8 +497,9 @@ Matrix& LinearElasticSolids::GetElasticMatrix()
 }
 
 //3D integrals
-Matrix& LinearElasticSolids::Integrate(const int& points, std::function<Matrix& (double, double, double, std::shared_ptr<Element>,LinearElasticSolids*)> func, Matrix& mat, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
+Matrix LinearElasticSolids::Integrate(const int& points, std::function<Matrix (double, double, double, std::shared_ptr<Element>,LinearElasticSolids*)> func, Matrix& mat, std::shared_ptr<Element> el_ptr, LinearElasticSolids* model)
 {
+
 	int index = points - 1;
 	//Construct result matrix of the appropriate size
 	Matrix result(mat.CountRows(), mat.CountCols());
