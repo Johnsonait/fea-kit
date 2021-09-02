@@ -52,6 +52,7 @@ public:
 	LinearElasticSolids(Reader& reader, Body& body);
 
 	void Solve(); 
+	void PostProcess();
 	static Matrix ConstructBMatrix(const double&, const double&, const double&, std::shared_ptr<Element>);
 	static Matrix ConstructShapeMatrix(const double& zeta, const double& eta, const double& mu, std::shared_ptr<Element> el);
 	Matrix& GetElasticMatrix();

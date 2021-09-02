@@ -19,7 +19,9 @@ const std::vector<std::vector<double>>& Body::GetNodes() { return nodes; }
 const std::vector<std::vector<uint32_t>>& Body::GetElements() { return element_id; }
 const std::vector<std::vector<double>>& Body::GetDisplacement() { return displacement; }
 const std::vector<std::vector<double>>& Body::GetStrain() { return strain; }
+const std::vector<double>& Body::GetEquivalentStrain() { return equiv_strain; }
 const std::vector<std::vector<double>>& Body::GetStress() { return stress; }
+const std::vector<double>& Body::GetEquivalentStress() { return equiv_stress; }
 const std::vector<double>& Body::GetTemperature() { return temperature; }
 
 //Function that takes in references to a set of boundary nodes, a string storing boundary type, a string storing the values associated with the boundary
@@ -110,3 +112,33 @@ void Body::SetMaterialProp(const std::string& type, const double& val)
 		density = val;
 	}
 }	
+
+void Body::AddDisplacement(const std::vector<double>& vector)
+{
+	displacement.push_back(vector);
+}
+
+void Body::AddStrain(const std::vector<double>& vector)
+{
+	strain.push_back(vector);
+}
+
+void Body::AddEquivalentStrain(const double& value)
+{
+	equiv_strain.push_back(value);
+}
+
+void Body::AddStress(const std::vector<double>& vector)
+{
+	stress.push_back(vector);
+}
+
+void Body::AddEquivalentStress(const double& value)
+{
+	equiv_stress.push_back(value);
+}
+
+void Body::AddTemperature(const double& value)
+{
+	temperature.push_back(value);
+}

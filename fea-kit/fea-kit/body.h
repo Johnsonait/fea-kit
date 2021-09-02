@@ -12,7 +12,9 @@ private:
 	std::vector<std::vector<uint32_t>> element_id;
 	std::vector<std::vector<double>> displacement;
 	std::vector<std::vector<double>> strain;
+	std::vector<double> equiv_strain;
 	std::vector<std::vector<double>> stress;
+	std::vector<double> equiv_stress;
 	std::vector<double> temperature;
 	std::vector<std::vector<uint32_t>> boundary_nodes; //Store nodes (id) for bounds
 	std::vector<std::string> boundary_types; //Store bound types for each bound (eg disp...)
@@ -33,7 +35,9 @@ public:
 	const std::vector<std::vector<uint32_t>>& GetElements();
 	const std::vector<std::vector<double>>& GetDisplacement();
 	const std::vector<std::vector<double>>& GetStrain();
+	const std::vector<double>& GetEquivalentStrain();
 	const std::vector<std::vector<double>>& GetStress();
+	const std::vector<double>& GetEquivalentStress();
 	const std::vector<double>& GetTemperature();
 	void GetBoundaryInfo(std::vector<uint32_t>& b_n, std::string& s, std::vector<double>& b_v, const uint32_t& index);
 	uint32_t GetBoundaryCount();
@@ -51,6 +55,12 @@ public:
 	void AddNode(const std::vector<double>& n);
 	void AddElement(const std::vector<uint32_t>& e);
 	void AddBoundary(const std::vector<uint32_t>& b_n, const std::string& s, const std::vector<double>& b_v);
+	void AddDisplacement(const std::vector<double>& vector);
+	void AddStrain(const std::vector<double>& vector);
+	void AddEquivalentStrain(const double& value);
+	void AddStress(const std::vector<double>& vector);
+	void AddEquivalentStress(const double& value);
+	void AddTemperature(const double& value);
 
 	void SetMaterialProp(const std::string& type, const double& val);
 
