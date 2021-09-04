@@ -81,7 +81,12 @@ def PrintData():
 def main():
     #First read data from "results.txt" into global variables
     Read("results.txt","model.txt")
-    PrintData()
+    #PrintData()
+
+    field = []
+    for row in range(0,len(global_u)):
+        field.append(global_u[row][2])
+    print(field)
     #This is where VTK starts to work its magic
     points = vtk.vtkPoints()
     cells = vtk.vtkCellArray()
@@ -96,7 +101,8 @@ def main():
     
     uGrid = vtk.vtkUnstructuredGrid()
     uGrid.SetPoints(points)
-    
+
+    #Set up each element from global_elements and add it to cells and grid
     for el in range(0,len(global_elements)):
         for i in range(0,8):
             hexahedron.GetPointIds().SetId(i,global_elements[el][i]-1) #SetId(i,j) i is local node id, j is global 
@@ -110,20 +116,43 @@ def main():
     point_data = vtk.vtkDoubleArray()
     point_data.SetNumberOfComponents(1)
     
-    for i in range(0,len(equiv_stress)):
-        point_data.InsertNextTuple([global_u[i][2]])
+    for i in range(0,len(field)):
+        point_data.InsertNextTuple([field[i]])
     
     #mesh.GetPointData().SetScalars(point_data)
     uGrid.GetPointData().SetScalars(point_data)
 
-
+    #Create lookup table for color mapping scalar data
+    lu_table = vtk.vtkLookupTable()
+    lu_table.SetNumberOfColors(256)
+    lu_table.SetHueRange(0.0,0.667)
+    lu_table.Build()
+    
     #mapper = vtk.vtkPolyDataMapper()
     #mapper.SetInputData(mesh)
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputData(uGrid)
+    mapper.SetLookupTable(lu_table)
+    mapper.SetScalarRange(min(field),max(field))
+    
+    # a colorbar to display the colormap
+    scalar_bar = vtk.vtkScalarBarActor()
+    scalar_bar.SetLookupTable( mapper.GetLookupTable() )
+    scalar_bar.SetTitle("Point scalar value")
+    scalar_bar.SetOrientationToHorizontal()
+    scalar_bar.GetLabelTextProperty().SetColor(1,1,1) 
+    scalar_bar.GetTitleTextProperty().SetColor(1,1,1)
+
+    # position it in window
+    coord = scalar_bar.GetPositionCoordinate()
+    coord.SetCoordinateSystemToNormalizedViewport()
+    coord.SetValue(0.1,0.05)
+    scalar_bar.SetWidth(.8)
+    scalar_bar.SetHeight(.15)
 
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
+    actor.GetProperty().SetEdgeVisibility(True) 
 
     window = vtk.vtkRenderWindow()
     window.SetSize(500,500)
@@ -135,7 +164,8 @@ def main():
     window.AddRenderer(renderer)
 
     renderer.AddActor(actor)
-    renderer.SetBackground(0.1,0.1,0.4)
+    renderer.AddActor(scalar_bar)
+    renderer.SetBackground(0,0,0)
 
     window.Render()
     interactor.Start()
