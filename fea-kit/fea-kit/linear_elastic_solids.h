@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <iostream>
+#include<iomanip>
 #include <memory>
 #include <math.h>
 #include <functional>
@@ -40,6 +41,7 @@ private:
 	void AssembleForce(Matrix&, const std::vector<uint32_t>&);
 	void EnforceSurfaceBounds(Matrix& local_k, std::shared_ptr<Element> el_ptr);
 	void EnforceDisplacements(std::shared_ptr<std::vector<std::vector<double>>> k, std::shared_ptr<std::vector<std::vector<double>>> f);
+	void GenerateSymmetry(std::shared_ptr<std::vector<std::vector<double>>> k);
 
 	Matrix Integrate(const int& points, std::function<Matrix (double, double, double, std::shared_ptr<Element>,LinearElasticSolids*)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids*);
 	Matrix& IntegrateSurf(const int& points, std::function<Matrix& (double, double,std::shared_ptr<Element>, LinearElasticSolids*,std::vector<std::vector<double>>&)> func, Matrix& mat, std::shared_ptr<Element> el_ptr,LinearElasticSolids*,std::vector<std::vector<double>>&);

@@ -502,8 +502,8 @@ void LinearElasticSolids::PostProcess()
 				//Time to add it to the global stress vector!
 				for (size_t i = 0; i < strain_mat.CountRows(); ++i)
 				{
-					global_strain[(local_elems[n]) - 1 + i][0] += strain_mat[i][0];
-					global_stress[(local_elems[n]) - 1 + i][0] += stress_mat[i][0];
+					global_strain[(local_elems[n]) - 2 + i][0] += strain_mat[i][0];
+					global_stress[(local_elems[n]) - 2 + i][0] += stress_mat[i][0];
 				}
 			}
 

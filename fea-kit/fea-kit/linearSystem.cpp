@@ -1,7 +1,7 @@
 #include "linearsystem.h"
 
 static const int COUNTMAX = 10000;
-static const double MINRES = 5e-5;
+static const double MINRES = 1e-5;
 
 //Return length of vector, useful for calculating residuals
 double LinearSystem::VectorNorm(std::vector<double>& x) 
@@ -91,14 +91,21 @@ void LinearSystem::Solve(std::vector<double>& x)
 }
 void LinearSystem::Solve(std::shared_ptr<std::vector<std::vector<double>>> x)
 {
-    (*x)[0].resize(b[0].size(), 0.1);
+    (*x)[0].resize(b[0].size(), 0.2);
 
     double residual = 1.0;
+    double residual_store = 0;
     int count = 0;
 
-    while (residual > MINRES && count < COUNTMAX)
+    while (residual > MINRES && residual != residual_store && count < COUNTMAX)
     {
         double normStore = VectorNorm((*x)[0]);
+        residual_store = residual;
+        if (count % 1000 == 0)
+        {
+            std::cout << "Iterations: " << count << "\n";
+            std::cout << "Residual: " << residual << "\n";
+        }
         for (int i = 0; i < b.size(); i++)
         {
             (*x)[i][0] = b[i][0];
@@ -117,7 +124,12 @@ void LinearSystem::Solve(std::shared_ptr<std::vector<std::vector<double>>> x)
     if (count == COUNTMAX)
     {
         std::cout<< std::endl << "Max iterations reached, solution did not converge! Residual: "<< residual << std::endl;
+        return;
     }
+    std::cout << "Maximum Iterations: " << COUNTMAX << std::endl;
+    std::cout << "Iterations: " << count << std::endl;
+    std::cout << "Minimum Residual: " << MINRES << std::endl;
+    std::cout << "Residual: " << residual << std::endl;
 }
 
 //Print solution vector (x) to console

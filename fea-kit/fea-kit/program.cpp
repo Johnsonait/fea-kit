@@ -12,6 +12,6 @@ void Program::Run()
 	model.Solve();
 	model.PostProcess();
 	
-	Writer writer("results.txt", body);
+	Writer writer("C:\\Users\\johan\\Desktop\\FEM\\fea-kit\\render\\results.txt", body);
 	writer.Write();
 }

@@ -80,13 +80,12 @@ def PrintData():
 
 def main():
     #First read data from "results.txt" into global variables
-    Read("results.txt","model.txt")
-    #PrintData()
+    Read("results.txt","C:\\Users\\johan\\Desktop\\FEM\\fea-kit\\fea-kit\\fea-kit\\model.txt")
+    PrintData()
 
     field = []
     for row in range(0,len(global_u)):
         field.append(global_u[row][2])
-    print(field)
     #This is where VTK starts to work its magic
     points = vtk.vtkPoints()
     cells = vtk.vtkCellArray()
@@ -138,7 +137,7 @@ def main():
     # a colorbar to display the colormap
     scalar_bar = vtk.vtkScalarBarActor()
     scalar_bar.SetLookupTable( mapper.GetLookupTable() )
-    scalar_bar.SetTitle("Point scalar value")
+    scalar_bar.SetTitle("W Displacement (m)")
     scalar_bar.SetOrientationToHorizontal()
     scalar_bar.GetLabelTextProperty().SetColor(1,1,1) 
     scalar_bar.GetTitleTextProperty().SetColor(1,1,1)
@@ -152,7 +151,9 @@ def main():
 
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
-    actor.GetProperty().SetEdgeVisibility(True) 
+    actor.GetProperty().SetEdgeVisibility(True)  
+    
+    
 
     window = vtk.vtkRenderWindow()
     window.SetSize(500,500)
@@ -162,11 +163,13 @@ def main():
 
     renderer = vtk.vtkRenderer()
     window.AddRenderer(renderer)
+    window.SetWindowName('Finite Element Solution Results')
 
     renderer.AddActor(actor)
     renderer.AddActor(scalar_bar)
     renderer.SetBackground(0,0,0)
-
+    
+    #Display everything we want
     window.Render()
     interactor.Start()
 
