@@ -353,7 +353,7 @@ void LinearElasticSolids::EnforceDisplacements(std::shared_ptr<std::vector<std::
 					//	(*k)[k_index+ dof][col] = 0;
 					//}
 					//Now set the appropriate entry of stiffness to 1
-					(*k)[k_index + dof][k_index + dof] = 10e20;
+					(*k)[k_index + dof][k_index + dof] = 10e30;
 					(*f)[k_index+dof][0] = boundary_vector[dof];
 				}
 			}
@@ -406,8 +406,7 @@ void LinearElasticSolids::Solve()
 			if (out != 0)
 			{
 				out = 1;
-				std::cout << std::setw(3) << std::setprecision(2) << "\033[31m";
-				std::cout << out << " ";
+				std::cout << std::setw(3) << std::setprecision(2) << "\033[31m" << out << " ";
 			}
 			else
 			{
@@ -502,22 +501,21 @@ void LinearElasticSolids::PostProcess()
 				//Time to add it to the global stress vector!
 				for (size_t i = 0; i < strain_mat.CountRows(); ++i)
 				{
-					global_strain[(local_elems[n]) - 1 + i][0] += strain_mat[i][0];
-					global_stress[(local_elems[n]) - 1 + i][0] += stress_mat[i][0];
+					global_strain[(local_elems[n]) - 1][i] += strain_mat[i][0];
+					global_stress[(local_elems[n]) - 1][i] += stress_mat[i][0];
 				}
 			}
-
 		}
 		//end of if for element types
-		//Now add the calculated results to the body_ptr
-		for (size_t i = 0; i < body_ptr->GetNodeNum(); i++)
-		{
-			body_ptr->AddStrain(global_strain[i]);
-			body_ptr->AddStress(global_stress[i]);
-			body_ptr->AddEquivalentStrain(EquivalentStrain(global_strain[i]));
-			body_ptr->AddEquivalentStress(EquivalentStress(global_stress[i]));
-			body_ptr->AddTemperature(global_temp[i]);
-		}
+	}
+	//Now add the calculated results to the body_ptr
+	for (size_t i = 0; i < body_ptr->GetNodeNum(); i++)
+	{
+		body_ptr->AddStrain(global_strain[i]);
+		body_ptr->AddStress(global_stress[i]);
+		body_ptr->AddEquivalentStrain(EquivalentStrain(global_strain[i]));
+		body_ptr->AddEquivalentStress(EquivalentStress(global_stress[i]));
+		body_ptr->AddTemperature(global_temp[i]);
 	}
 	Log("Data processing complete!");
 	
