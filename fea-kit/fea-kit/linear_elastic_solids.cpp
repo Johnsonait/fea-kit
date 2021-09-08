@@ -159,7 +159,7 @@ Matrix LinearElasticSolids::ConstructShapeMatrix(const double& zeta, const doubl
 //This function is used to update the provided local_k matrix using quadrature 
 void LinearElasticSolids::CalculateLocalK(Matrix& local_k, std::shared_ptr<Element> el_ptr)
 {
-	local_k = Integrate(3, StiffnessIntegrand,local_k,el_ptr,this);
+	local_k = Integrate(1, StiffnessIntegrand,local_k,el_ptr,this);
 }
 
 //This function updates the global stiffness matrix from the element stiffness matrix
@@ -284,13 +284,13 @@ void LinearElasticSolids::CalculateLocalForce(Matrix& local_f, std::shared_ptr<E
 //Integrate the body-force values to be used in global force-vector
 void LinearElasticSolids::CalculateBodyForce(Matrix& local_f, std::shared_ptr<Element> el_ptr,LinearElasticSolids* model)
 {
-	local_f = local_f + Integrate(2, BodyForceIntegrand,local_f, el_ptr,model);
+	local_f = local_f + Integrate(1, BodyForceIntegrand,local_f, el_ptr,model);
 }
 
 //Integrate the surface tractions to be used in global force-vector
 void LinearElasticSolids::CalculateSurfaceForce(Matrix& local_f, std::shared_ptr<Element> el_ptr,LinearElasticSolids* model,std::vector<std::vector<double>>& traction)
 {
-	local_f = local_f + IntegrateSurf(2,SurfaceForceIntegrand,local_f, el_ptr,model,traction);
+	local_f = local_f + IntegrateSurf(1,SurfaceForceIntegrand,local_f, el_ptr,model,traction);
 }
 
 LinearElasticSolids::LinearElasticSolids()//Default constructors
@@ -376,6 +376,7 @@ void LinearElasticSolids::Solve()
 
 		std::vector<uint32_t> local_elems = *e; //Store the set of element id's
 		
+		//Element type is determined by the number of nodes in the element, 8 --> Brick element
 		if (e->size() == 8)
 		{
 			//Create a heap-allocated brick element & pointer to be passed to the calulation functions
